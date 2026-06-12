@@ -23,6 +23,8 @@ public slots:
     bool extractConfigFromFile(const QString &fileName);
     bool extractConfigFromData(QString data);
     bool extractConfigFromQr(const QByteArray &data);
+    bool isSubscriptionLink(const QString &data);
+    bool importSubscription(const QString &data);
     QString getConfig();
     QString getConfigFileName();
     QString getMaliciousWarningText();

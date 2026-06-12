@@ -80,6 +80,23 @@ bool ImportUiController::extractConfigFromData(QString data)
     return true;
 }
 
+bool ImportUiController::isSubscriptionLink(const QString &data)
+{
+    return ImportController::isSubscriptionLink(data);
+}
+
+bool ImportUiController::importSubscription(const QString &data)
+{
+    ErrorCode errorCode = m_importController->importSubscription(data);
+
+    if (errorCode != ErrorCode::NoError) {
+        emit importErrorOccurred(errorCode, false);
+        return false;
+    }
+
+    return true;
+}
+
 bool ImportUiController::extractConfigFromQr(const QByteArray &data)
 {
     auto result = m_importController->extractConfigFromQr(data);

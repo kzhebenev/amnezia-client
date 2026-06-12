@@ -2,16 +2,22 @@
 
 #include <QDataStream>
 #include <QDebug>
+#include <QEventLoop>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QMap>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 #include <QRegularExpressionMatchIterator>
+#include <QTimer>
 #include <QUrl>
 #include <algorithm>
+#include <memory>
 
 #include "core/utils/containerEnum.h"
 #include "core/utils/containers/containerUtils.h"
@@ -416,6 +422,152 @@ void ImportController::importConfig(const QJsonObject &config)
         qDebug().noquote() << QJsonDocument(config).toJson();
         emit importErrorOccurred(ErrorCode::ImportInvalidConfigError, false);
     }
+}
+
+namespace
+{
+    QString subscriptionValueToString(const QJsonValue &value)
+    {
+        if (value.isString()) {
+            return value.toString();
+        }
+        if (value.isDouble()) {
+            return QString::number(value.toVariant().toLongLong());
+        }
+        return QString();
+    }
+
+    // Builds a WireGuard/AWG .conf from a subscription profile so it can be
+    // parsed by the regular extractWireGuardConfig() pipeline
+    QString buildConfFromSubscriptionProfile(const QJsonObject &profile)
+    {
+        QStringList lines;
+        lines << "[Interface]";
+        lines << "Address = " + profile.value("client_address").toString();
+
+        const QString dns = profile.value("dns").toString();
+        if (!dns.isEmpty()) {
+            lines << "DNS = " + dns;
+        }
+
+        lines << "PrivateKey = " + profile.value("client_private_key").toString();
+
+        const QString mtu = subscriptionValueToString(profile.value("mtu"));
+        if (!mtu.isEmpty()) {
+            lines << "MTU = " + mtu;
+        }
+
+        const QJsonObject awg = profile.value("awg").toObject();
+        const QStringList awgKeys = awg.keys();
+        for (const QString &key : awgKeys) {
+            const QString value = subscriptionValueToString(awg.value(key));
+            if (!value.isEmpty()) {
+                lines << key + " = " + value;
+            }
+        }
+
+        lines << "";
+        lines << "[Peer]";
+        lines << "PublicKey = " + profile.value("server_public_key").toString();
+
+        const QString presharedKey = profile.value("client_preshared_key").toString();
+        if (!presharedKey.isEmpty()) {
+            lines << "PresharedKey = " + presharedKey;
+        }
+
+        QString allowedIps = profile.value("allowed_ips").toString();
+        if (allowedIps.isEmpty()) {
+            allowedIps = "0.0.0.0/0, ::/0";
+        }
+        lines << "AllowedIPs = " + allowedIps;
+
+        lines << "Endpoint = " + profile.value("server").toString() + ":"
+                        + subscriptionValueToString(profile.value("port"));
+
+        const QString keepAlive = subscriptionValueToString(profile.value("persistent_keepalive"));
+        if (!keepAlive.isEmpty()) {
+            lines << "PersistentKeepalive = " + keepAlive;
+        }
+
+        return lines.join("\n");
+    }
+} // namespace
+
+bool ImportController::isSubscriptionLink(const QString &data)
+{
+    const QString trimmed = data.trimmed();
+    return trimmed.startsWith("https://", Qt::CaseInsensitive) || trimmed.startsWith("http://", Qt::CaseInsensitive);
+}
+
+ErrorCode ImportController::importSubscription(const QString &data)
+{
+    const QUrl url(data.trimmed());
+    if (!url.isValid() || url.host().isEmpty()) {
+        return ErrorCode::ImportInvalidConfigError;
+    }
+
+    QNetworkAccessManager manager;
+    QNetworkRequest request(url);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setRawHeader("Accept", "application/json");
+
+    std::unique_ptr<QNetworkReply> reply(manager.get(request));
+
+    QEventLoop loop;
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    connect(reply.get(), &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    timeoutTimer.start(15000);
+    loop.exec();
+
+    if (!timeoutTimer.isActive()) {
+        reply->abort();
+        return ErrorCode::ApiConfigTimeoutError;
+    }
+
+    if (reply->error() != QNetworkReply::NoError) {
+        qDebug() << "Subscription request failed:" << reply->errorString();
+        return ErrorCode::ApiConfigDownloadError;
+    }
+
+    const QJsonObject subscription = QJsonDocument::fromJson(reply->readAll()).object();
+    const QJsonArray profiles = subscription.value("profiles").toArray();
+    if (profiles.isEmpty()) {
+        return ErrorCode::ApiConfigEmptyError;
+    }
+
+    int importedCount = 0;
+    for (const QJsonValue &profileValue : profiles) {
+        const QJsonObject profile = profileValue.toObject();
+
+        ConfigTypes configType = ConfigTypes::Invalid;
+        QJsonObject serverConfig = extractWireGuardConfig(buildConfFromSubscriptionProfile(profile), configType);
+        if (serverConfig.isEmpty()) {
+            qDebug() << "Skipping invalid subscription profile" << profile.value("name").toString();
+            continue;
+        }
+
+        const QString profileName = profile.value("name").toString();
+        if (!profileName.isEmpty()) {
+            serverConfig[configKey::description] = profileName;
+        }
+
+        QJsonObject subscriptionInfo;
+        subscriptionInfo["url"] = url.toString();
+        subscriptionInfo["profile"] = profileName;
+        serverConfig["subscription"] = subscriptionInfo;
+
+        m_serversRepository->addServer(QString(), serverConfig, serverConfigUtils::configTypeFromJson(serverConfig));
+        ++importedCount;
+    }
+
+    if (importedCount == 0) {
+        return ErrorCode::ImportInvalidConfigError;
+    }
+
+    emit importFinished();
+    return ErrorCode::NoError;
 }
 
 QJsonObject ImportController::processNativeWireGuardConfig(const QJsonObject &config)

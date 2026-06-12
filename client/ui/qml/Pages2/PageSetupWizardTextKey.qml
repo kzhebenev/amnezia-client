@@ -45,7 +45,7 @@ PageType {
                 Layout.leftMargin: 16
 
                 headerText: qsTr("Connection key")
-                descriptionText: qsTr("A line that starts with vpn://...")
+                descriptionText: qsTr("A line that starts with vpn://... or a subscription link (https://...)")
             }
         }
 
@@ -89,7 +89,16 @@ PageType {
                 text: qsTr("Continue")
 
                 clickedFunc: function() {
-                    if (ImportController.extractConfigFromData(textKey.textField.text)) {
+                    var key = textKey.textField.text
+                    if (ImportController.isSubscriptionLink(key)) {
+                        PageController.showBusyIndicator(true)
+                        var imported = ImportController.importSubscription(key)
+                        PageController.showBusyIndicator(false)
+                        if (imported) {
+                            PageController.goToPageHome()
+                            PageController.showNotificationMessage(qsTr("Subscription imported"))
+                        }
+                    } else if (ImportController.extractConfigFromData(key)) {
                         PageController.goToPage(PageEnum.PageSetupWizardViewConfig)
                     }
                 }

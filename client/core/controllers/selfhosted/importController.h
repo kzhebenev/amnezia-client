@@ -57,6 +57,9 @@ public:
     ImportResult extractConfigFromData(const QString &data, const QString &configFileName = "");
     ImportResult extractConfigFromQr(const QByteArray &data);
 
+    static bool isSubscriptionLink(const QString &data);
+    ErrorCode importSubscription(const QString &data);
+
     void startDecodingQr();
     QrParseResult parseQrCodeChunk(const QString &code);
     bool isQrDecodingActive() const;
