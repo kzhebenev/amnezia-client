@@ -2,9 +2,11 @@
 #define IMPORTCONTROLLER_H
 
 #include <QObject>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QByteArray>
 #include <QMap>
+#include <QUrl>
 
 #include "core/repositories/secureServersRepository.h"
 #include "core/repositories/secureAppSettingsRepository.h"
@@ -59,6 +61,8 @@ public:
 
     static bool isSubscriptionLink(const QString &data);
     ErrorCode importSubscription(const QString &data);
+    ErrorCode refreshSubscriptions(int &updatedCount);
+    bool hasSubscriptions() const;
 
     void startDecodingQr();
     QrParseResult parseQrCodeChunk(const QString &code);
@@ -75,6 +79,10 @@ signals:
     void restoreAppConfig(const QByteArray &data);
 
 private:
+    ErrorCode fetchSubscriptionProfiles(const QUrl &url, QJsonArray &profiles) const;
+    QJsonObject buildServerConfigFromSubscriptionProfile(const QJsonObject &profile, const QString &subscriptionUrl) const;
+    ErrorCode refreshSubscriptionFromProfiles(const QString &subscriptionUrl, const QJsonArray &profiles, int &updatedCount);
+
     ConfigTypes checkConfigFormat(const QString &config) const;
     QJsonObject extractOpenVpnConfig(const QString &data) const;
     QJsonObject extractWireGuardConfig(const QString &data, ConfigTypes &configType) const;

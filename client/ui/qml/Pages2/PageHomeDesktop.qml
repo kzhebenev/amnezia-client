@@ -25,13 +25,34 @@ PageType {
     property var selectedInfo: ({})
     property var selectedContainers: []
     property bool pendingSwitch: false
+    property bool isRenaming: false
+    property int importGeneration: 0
+
+    // per-server diagnostics logs
+    property var checkLogs: ({})
+    property string checkingServerId: ""
+
+    function currentServerId() {
+        return selectedInfo.serverId !== undefined ? selectedInfo.serverId : ""
+    }
+
+    function appendCheckLog(serverId, line) {
+        var logs = checkLogs
+        logs[serverId] = (logs[serverId] !== undefined ? logs[serverId] : "") + line + "\n"
+        checkLogs = logs
+        if (serverId === currentServerId()) {
+            checkLogArea.text = logs[serverId]
+        }
+    }
 
     function refreshSelection() {
+        isRenaming = false
         var count = ServersUiController.getServersCount()
         if (count === 0) {
             selectedIndex = -1
             selectedInfo = {}
             selectedContainers = []
+            checkLogArea.text = ""
             return
         }
         if (selectedIndex < 0 || selectedIndex >= count) {
@@ -42,6 +63,7 @@ PageType {
         }
         selectedInfo = ServersUiController.getServerInfo(selectedIndex)
         selectedContainers = ServersUiController.getServerContainers(selectedIndex)
+        checkLogArea.text = checkLogs[currentServerId()] !== undefined ? checkLogs[currentServerId()] : ""
     }
 
     function connectToSelected() {
@@ -70,6 +92,40 @@ PageType {
         }
     }
 
+    function runCheck() {
+        if (selectedIndex < 0 || DiagnosticsController.isCheckInProgress) {
+            return
+        }
+        var port = ""
+        var proto = ""
+        for (var i = 0; i < selectedContainers.length; ++i) {
+            if (selectedContainers[i].isDefault) {
+                port = selectedContainers[i].port
+                proto = selectedContainers[i].transportProto
+            }
+        }
+        checkingServerId = currentServerId()
+        DiagnosticsController.startCheck(selectedInfo.hostName, port, proto, ConnectionController.isConnected)
+    }
+
+    function importFromText(key) {
+        if (key === "") {
+            return
+        }
+        if (ImportController.isSubscriptionLink(key)) {
+            PageController.showBusyIndicator(true)
+            var imported = ImportController.importSubscription(key)
+            PageController.showBusyIndicator(false)
+            if (imported) {
+                addConnectionModal.close()
+                PageController.showNotificationMessage(qsTr("Subscription imported"))
+            }
+        } else if (ImportController.extractConfigFromData(key)) {
+            ImportController.importConfig()
+            addConnectionModal.close()
+        }
+    }
+
     Component.onCompleted: refreshSelection()
 
     Connections {
@@ -95,7 +151,107 @@ PageType {
     Connections {
         target: ImportController
         function onImportFinished() {
+            root.importGeneration += 1
             root.refreshSelection()
+        }
+    }
+
+    Connections {
+        target: DiagnosticsController
+        function onLogAppended(line) {
+            root.appendCheckLog(root.checkingServerId, line)
+        }
+    }
+
+    // small bordered button used in the title row
+    component SmallButton: Rectangle {
+        id: smallButtonRoot
+
+        property string text
+        property var clickedFunc
+        property bool isEnabled: true
+
+        width: smallButtonText.implicitWidth + 24
+        height: 32
+        radius: 16
+        color: smallButtonMouseArea.containsMouse && isEnabled ? AmneziaStyle.color.translucentWhite
+                                                               : AmneziaStyle.color.transparent
+        border.width: 1
+        border.color: AmneziaStyle.color.charcoalGray
+        opacity: isEnabled ? 1.0 : 0.4
+
+        Text {
+            id: smallButtonText
+            anchors.centerIn: parent
+            text: smallButtonRoot.text
+            color: AmneziaStyle.color.paleGray
+            font.pixelSize: 12
+        }
+
+        MouseArea {
+            id: smallButtonMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: smallButtonRoot.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: {
+                if (smallButtonRoot.isEnabled && smallButtonRoot.clickedFunc) {
+                    smallButtonRoot.clickedFunc()
+                }
+            }
+        }
+    }
+
+    // sidebar footer action row
+    component SidebarAction: Item {
+        id: sidebarActionRoot
+
+        property string icon
+        property string text
+        property var clickedFunc
+
+        Layout.fillWidth: true
+        height: 34
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            radius: 6
+            color: sidebarActionMouseArea.containsMouse ? AmneziaStyle.color.barelyTranslucentWhite
+                                                        : AmneziaStyle.color.transparent
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            spacing: 8
+
+            Text {
+                text: sidebarActionRoot.icon
+                color: AmneziaStyle.color.mutedGray
+                font.pixelSize: 14
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: sidebarActionRoot.text
+                color: AmneziaStyle.color.mutedGray
+                font.pixelSize: 13
+                elide: Text.ElideRight
+            }
+        }
+
+        MouseArea {
+            id: sidebarActionMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (sidebarActionRoot.clickedFunc) {
+                    sidebarActionRoot.clickedFunc()
+                }
+            }
         }
     }
 
@@ -206,60 +362,33 @@ PageType {
                     color: AmneziaStyle.color.translucentWhite
                 }
 
-                Item {
-                    Layout.fillWidth: true
-                    height: 40
+                SidebarAction {
+                    icon: "+"
+                    text: qsTr("Add connection")
+                    clickedFunc: function() { addConnectionModal.open() }
+                }
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 16
-                        spacing: 6
-
-                        Text {
-                            text: "+"
-                            color: AmneziaStyle.color.mutedGray
-                            font.pixelSize: 18
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: qsTr("Add connection")
-                            color: AmneziaStyle.color.mutedGray
-                            font.pixelSize: 13
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: addMenu.popup()
-                    }
-
-                    Menu {
-                        id: addMenu
-
-                        MenuItem {
-                            text: qsTr("Config file from disk…")
-                            onTriggered: {
-                                var fileName = SystemController.getFileName(qsTr("Open config file"),
-                                                                            qsTr("All files (*)"))
-                                if (fileName !== "") {
-                                    if (ImportController.extractConfigFromFile(fileName)) {
-                                        PageController.goToPage(PageEnum.PageSetupWizardViewConfig)
-                                    }
-                                }
-                            }
-                        }
-
-                        MenuItem {
-                            text: qsTr("vpn:// key or subscription link…")
-                            onTriggered: {
-                                PageController.goToPage(PageEnum.PageSetupWizardTextKey)
-                            }
+                SidebarAction {
+                    icon: "↻"
+                    text: qsTr("Update from vpn.devkz.ru")
+                    visible: (root.importGeneration, serversListView.count, ImportController.hasSubscriptions())
+                    clickedFunc: function() {
+                        PageController.showBusyIndicator(true)
+                        var updated = ImportController.refreshSubscriptions()
+                        PageController.showBusyIndicator(false)
+                        if (updated) {
+                            PageController.showNotificationMessage(qsTr("Profiles updated"))
                         }
                     }
                 }
+
+                SidebarAction {
+                    icon: "⚙"
+                    text: qsTr("Settings")
+                    clickedFunc: function() { PageController.goToPage(PageEnum.PageSettings) }
+                }
+
+                Item { height: 8 }
             }
         }
 
@@ -289,36 +418,125 @@ PageType {
                 spacing: 16
                 visible: root.selectedIndex >= 0
 
-                // Header
-                ColumnLayout {
+                // Title row: name + rename, check button, connect switch
+                RowLayout {
                     Layout.fillWidth: true
-                    spacing: 2
+                    spacing: 12
 
-                    Text {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: root.selectedInfo.name !== undefined ? root.selectedInfo.name : ""
-                        color: AmneziaStyle.color.paleGray
-                        font.pixelSize: 22
-                        font.weight: 700
-                        elide: Text.ElideRight
-                    }
+                        spacing: 2
 
-                    RowLayout {
-                        spacing: 6
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
 
-                        Rectangle {
-                            width: 8
-                            height: 8
-                            radius: 4
-                            color: root.selectedInfo.isDefault && ConnectionController.isConnected ? root.macGreen
-                                                                                                   : AmneziaStyle.color.charcoalGray
+                            Text {
+                                visible: !root.isRenaming
+                                text: root.selectedInfo.name !== undefined ? root.selectedInfo.name : ""
+                                color: AmneziaStyle.color.paleGray
+                                font.pixelSize: 22
+                                font.weight: 700
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                visible: !root.isRenaming
+                                text: "✎"
+                                color: renameMouseArea.containsMouse ? AmneziaStyle.color.paleGray
+                                                                     : AmneziaStyle.color.mutedGray
+                                font.pixelSize: 16
+
+                                MouseArea {
+                                    id: renameMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        renameField.text = root.selectedInfo.name
+                                        root.isRenaming = true
+                                        renameField.forceActiveFocus()
+                                    }
+                                }
+                            }
+
+                            TextField {
+                                id: renameField
+
+                                Layout.preferredWidth: 280
+                                visible: root.isRenaming
+                                color: AmneziaStyle.color.paleGray
+                                font.pixelSize: 18
+                                background: Rectangle {
+                                    color: AmneziaStyle.color.translucentWhite
+                                    radius: 6
+                                    border.width: 1
+                                    border.color: AmneziaStyle.color.goldenApricot
+                                }
+                                onAccepted: {
+                                    if (text.trim() !== "") {
+                                        ServersUiController.editServerName(root.selectedInfo.serverId, text.trim())
+                                    }
+                                    root.refreshSelection()
+                                }
+                                Keys.onEscapePressed: root.isRenaming = false
+                            }
+
+                            Item { Layout.fillWidth: true }
                         }
 
-                        Text {
-                            text: root.selectedInfo.isDefault ? ConnectionController.connectionStateText
-                                                              : qsTr("Not connected")
-                            color: AmneziaStyle.color.mutedGray
-                            font.pixelSize: 13
+                        RowLayout {
+                            spacing: 6
+
+                            Rectangle {
+                                width: 8
+                                height: 8
+                                radius: 4
+                                color: root.selectedInfo.isDefault && ConnectionController.isConnected ? root.macGreen
+                                                                                                       : AmneziaStyle.color.charcoalGray
+                            }
+
+                            Text {
+                                text: {
+                                    if (root.selectedInfo.isDefault === true) {
+                                        if (ConnectionController.isConnected || ConnectionController.isConnectionInProgress) {
+                                            return ConnectionController.connectionStateText
+                                        }
+                                    }
+                                    return qsTr("Not connected")
+                                }
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 13
+                            }
+                        }
+                    }
+
+                    SmallButton {
+                        text: DiagnosticsController.isCheckInProgress ? qsTr("Checking…") : qsTr("Check")
+                        isEnabled: !DiagnosticsController.isCheckInProgress
+                        clickedFunc: function() { root.runCheck() }
+                    }
+
+                    SwitcherType {
+                        id: connectionSwitch
+
+                        Layout.preferredWidth: 52
+                        Layout.preferredHeight: 32
+
+                        text: ""
+                        checked: ConnectionController.isConnected && root.selectedInfo.isDefault === true
+                        enabled: !ConnectionController.isConnectionInProgress && root.selectedIndex >= 0
+
+                        onToggled: {
+                            var wantOn = checked
+                            checked = Qt.binding(function() {
+                                return ConnectionController.isConnected && root.selectedInfo.isDefault === true
+                            })
+                            if (wantOn) {
+                                root.connectToSelected()
+                            } else {
+                                ConnectionController.closeConnection()
+                            }
                         }
                     }
                 }
@@ -451,75 +669,61 @@ PageType {
                                 font.pixelSize: 13
                             }
                         }
-                    }
-                }
 
-                // Action buttons
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    BasicButtonType {
-                        Layout.preferredWidth: 160
-
-                        text: ConnectionController.isConnectionInProgress ? ConnectionController.connectionStateText
-                                                                          : qsTr("Connect")
-                        enabled: !(ConnectionController.isConnected && root.selectedInfo.isDefault)
-                                 && !ConnectionController.isConnectionInProgress
-
-                        defaultColor: AmneziaStyle.color.goldenApricot
-                        hoveredColor: Qt.lighter(AmneziaStyle.color.goldenApricot, 1.1)
-                        pressedColor: Qt.darker(AmneziaStyle.color.goldenApricot, 1.1)
-
-                        clickedFunc: function() {
-                            root.connectToSelected()
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: AmneziaStyle.color.translucentWhite
                         }
-                    }
 
-                    BasicButtonType {
-                        Layout.preferredWidth: 160
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
 
-                        visible: ConnectionController.isConnected || ConnectionController.isConnectionInProgress
-                        text: qsTr("Disconnect")
+                            Text {
+                                text: qsTr("Connection settings…")
+                                color: serverSettingsMouseArea.containsMouse ? AmneziaStyle.color.paleGray
+                                                                             : AmneziaStyle.color.mutedGray
+                                font.pixelSize: 13
 
-                        defaultColor: AmneziaStyle.color.transparent
-                        hoveredColor: AmneziaStyle.color.translucentWhite
-                        pressedColor: AmneziaStyle.color.sheerWhite
-                        textColor: root.macRed
-                        borderWidth: 1
-                        borderColor: AmneziaStyle.color.charcoalGray
-
-                        clickedFunc: function() {
-                            ConnectionController.closeConnection()
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    BasicButtonType {
-                        Layout.preferredWidth: 200
-
-                        text: DiagnosticsController.isCheckInProgress ? qsTr("Checking…") : qsTr("Check connection")
-                        enabled: !DiagnosticsController.isCheckInProgress && root.selectedIndex >= 0
-
-                        defaultColor: AmneziaStyle.color.transparent
-                        hoveredColor: AmneziaStyle.color.translucentWhite
-                        pressedColor: AmneziaStyle.color.sheerWhite
-                        textColor: AmneziaStyle.color.paleGray
-                        borderWidth: 1
-                        borderColor: AmneziaStyle.color.charcoalGray
-
-                        clickedFunc: function() {
-                            var port = ""
-                            var proto = ""
-                            for (var i = 0; i < root.selectedContainers.length; ++i) {
-                                if (root.selectedContainers[i].isDefault) {
-                                    port = root.selectedContainers[i].port
-                                    proto = root.selectedContainers[i].transportProto
+                                MouseArea {
+                                    id: serverSettingsMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        ServersUiController.processedServerId = root.selectedInfo.serverId
+                                        PageController.goToPage(PageEnum.PageSettingsServerInfo)
+                                    }
                                 }
                             }
-                            DiagnosticsController.startCheck(root.selectedInfo.hostName, port, proto,
-                                                             ConnectionController.isConnected)
+
+                            Item { Layout.fillWidth: true }
+
+                            Text {
+                                text: qsTr("Delete connection")
+                                color: deleteMouseArea.containsMouse ? root.macRed : AmneziaStyle.color.mutedGray
+                                font.pixelSize: 13
+
+                                MouseArea {
+                                    id: deleteMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        var serverId = root.selectedInfo.serverId
+                                        showQuestionDrawer(qsTr("Delete \"%1\"?").arg(root.selectedInfo.name),
+                                                           qsTr("The connection profile will be removed from this device."),
+                                                           qsTr("Delete"), qsTr("Cancel"),
+                                                           function() {
+                                                               ServersUiController.removeServer(serverId)
+                                                               root.selectedIndex = -1
+                                                               root.refreshSelection()
+                                                           },
+                                                           function() {})
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -577,7 +781,12 @@ PageType {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: checkLogArea.text = ""
+                                    onClicked: {
+                                        var logs = root.checkLogs
+                                        logs[root.currentServerId()] = ""
+                                        root.checkLogs = logs
+                                        checkLogArea.text = ""
+                                    }
                                 }
                             }
                         }
@@ -597,14 +806,134 @@ PageType {
                                 font.pixelSize: 11
                                 selectByMouse: true
                                 background: Rectangle { color: AmneziaStyle.color.transparent }
-
-                                Connections {
-                                    target: DiagnosticsController
-                                    function onLogAppended(line) {
-                                        checkLogArea.append(line)
-                                    }
-                                }
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ===================== Add connection modal =====================
+    Popup {
+        id: addConnectionModal
+
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 460
+        modal: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        onOpened: keyField.textField.text = ""
+
+        Overlay.modal: Rectangle {
+            color: AmneziaStyle.color.translucentMidnightBlack
+        }
+
+        background: Rectangle {
+            color: AmneziaStyle.color.onyxBlack
+            radius: 12
+            border.width: 1
+            border.color: AmneziaStyle.color.sheerWhite
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 16
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Add connection")
+                color: AmneziaStyle.color.paleGray
+                font.pixelSize: 17
+                font.weight: 700
+            }
+
+            BasicButtonType {
+                Layout.fillWidth: true
+
+                text: qsTr("Choose config file…")
+
+                defaultColor: AmneziaStyle.color.transparent
+                hoveredColor: AmneziaStyle.color.translucentWhite
+                pressedColor: AmneziaStyle.color.sheerWhite
+                textColor: AmneziaStyle.color.paleGray
+                borderWidth: 1
+                borderColor: AmneziaStyle.color.charcoalGray
+
+                clickedFunc: function() {
+                    var fileName = SystemController.getFileName(qsTr("Open config file"), qsTr("All files (*)"))
+                    if (fileName !== "") {
+                        if (ImportController.extractConfigFromFile(fileName)) {
+                            ImportController.importConfig()
+                            addConnectionModal.close()
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: AmneziaStyle.color.translucentWhite }
+                Text { text: qsTr("or"); color: AmneziaStyle.color.mutedGray; font.pixelSize: 11 }
+                Rectangle { Layout.fillWidth: true; height: 1; color: AmneziaStyle.color.translucentWhite }
+            }
+
+            TextFieldWithHeaderType {
+                id: keyField
+
+                Layout.fillWidth: true
+
+                headerText: qsTr("vpn:// key, config text or subscription link")
+                textField.placeholderText: "vpn:// | [Interface]… | https://vpn.devkz.ru/api/sub/…"
+                buttonText: qsTr("Paste")
+
+                clickedFunc: function() {
+                    textField.text = ""
+                    textField.paste()
+                }
+            }
+
+            BasicButtonType {
+                Layout.fillWidth: true
+
+                text: qsTr("Import")
+
+                defaultColor: AmneziaStyle.color.goldenApricot
+                hoveredColor: Qt.lighter(AmneziaStyle.color.goldenApricot, 1.1)
+                pressedColor: Qt.darker(AmneziaStyle.color.goldenApricot, 1.1)
+
+                clickedFunc: function() {
+                    root.importFromText(keyField.textField.text)
+                }
+            }
+
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: qsTr("Load available profiles from vpn.devkz.ru")
+                color: devkzMouseArea.containsMouse ? AmneziaStyle.color.goldenApricot
+                                                    : AmneziaStyle.color.mutedGray
+                font.pixelSize: 12
+
+                MouseArea {
+                    id: devkzMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (ImportController.hasSubscriptions()) {
+                            PageController.showBusyIndicator(true)
+                            var updated = ImportController.refreshSubscriptions()
+                            PageController.showBusyIndicator(false)
+                            if (updated) {
+                                addConnectionModal.close()
+                                PageController.showNotificationMessage(qsTr("Profiles updated"))
+                            }
+                        } else {
+                            keyField.textField.text = "https://vpn.devkz.ru/api/sub/"
+                            keyField.textField.forceActiveFocus()
+                            keyField.textField.cursorPosition = keyField.textField.text.length
                         }
                     }
                 }

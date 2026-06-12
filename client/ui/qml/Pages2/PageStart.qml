@@ -28,7 +28,7 @@ PageType {
                 tabBar.visible = false
                 tabBarStackView.goToTabBarPage(PageEnum.PageSetupWizardStart)
             } else {
-                tabBar.visible = true
+                tabBar.visible = !GC.isDesktop()
                 tabBar.setCurrentIndex(0)
                 tabBarStackView.goToTabBarPage(PageEnum.PageHome)
             }
@@ -285,7 +285,7 @@ PageType {
                 tabBar.visible = false
                 pagePath = PageController.getPagePath(PageEnum.PageSetupWizardStart)
             } else {
-                tabBar.visible = true
+                tabBar.visible = !GC.isDesktop()
                 pagePath = PageController.getPagePath(PageEnum.PageHome)
                 ServersUiController.setProcessedServerId(ServersUiController.defaultServerId)
             }

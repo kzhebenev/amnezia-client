@@ -392,6 +392,11 @@ QVector<QString> SecureServersRepository::orderedServerIds() const
     return m_orderedServerIds;
 }
 
+QJsonObject SecureServersRepository::serverJson(const QString &serverId) const
+{
+    return m_serverJsonById.value(serverId);
+}
+
 int SecureServersRepository::indexOfServerId(const QString &serverId) const
 {
     return m_orderedServerIds.indexOf(serverId);

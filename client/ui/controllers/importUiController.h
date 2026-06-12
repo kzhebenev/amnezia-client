@@ -25,6 +25,8 @@ public slots:
     bool extractConfigFromQr(const QByteArray &data);
     bool isSubscriptionLink(const QString &data);
     bool importSubscription(const QString &data);
+    bool refreshSubscriptions();
+    bool hasSubscriptions();
     QString getConfig();
     QString getConfigFileName();
     QString getMaliciousWarningText();

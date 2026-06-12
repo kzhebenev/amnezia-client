@@ -97,6 +97,24 @@ bool ImportUiController::importSubscription(const QString &data)
     return true;
 }
 
+bool ImportUiController::refreshSubscriptions()
+{
+    int updatedCount = 0;
+    ErrorCode errorCode = m_importController->refreshSubscriptions(updatedCount);
+
+    if (errorCode != ErrorCode::NoError) {
+        emit importErrorOccurred(errorCode, false);
+        return false;
+    }
+
+    return true;
+}
+
+bool ImportUiController::hasSubscriptions()
+{
+    return m_importController->hasSubscriptions();
+}
+
 bool ImportUiController::extractConfigFromQr(const QByteArray &data)
 {
     auto result = m_importController->extractConfigFromQr(data);

@@ -41,6 +41,7 @@ public:
     int indexOfServerId(const QString &serverId) const;
     QString serverIdAt(int index) const;
     QVector<QString> orderedServerIds() const;
+    QJsonObject serverJson(const QString &serverId) const;
 
     int defaultServerIndex() const;
     QString defaultServerId() const;
