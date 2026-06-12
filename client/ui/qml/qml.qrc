@@ -73,6 +73,7 @@
         <file>Pages2/PageDeinstalling.qml</file>
         <file>Pages2/PageDevMenu.qml</file>
         <file>Pages2/PageHome.qml</file>
+        <file>Pages2/PageHomeDesktop.qml</file>
         <file>Pages2/PageProtocolAwgSettings.qml</file>
         <file>Pages2/PageProtocolOpenVpnSettings.qml</file>
         <file>Pages2/PageProtocolRaw.qml</file>

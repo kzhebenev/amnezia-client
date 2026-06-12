@@ -21,6 +21,9 @@
 #include "core/protocols/qmlRegisterProtocols.h"
 #include "logger.h"
 #include "ui/controllers/qml/pageController.h"
+#if defined(Q_OS_MACX)
+    #include "ui/utils/macosUtil.h"
+#endif
 #include "ui/models/installedAppsModel.h"
 #include "version.h"
 
@@ -96,6 +99,10 @@ namespace {
 
 void AmneziaApplication::init()
 {
+#if defined(Q_OS_MACX)
+    forceDarkAppearance();
+#endif
+
     m_engine = new QQmlApplicationEngine;
 
     const QUrl url(QStringLiteral("qrc:/ui/qml/main2.qml"));
@@ -251,7 +258,7 @@ bool AmneziaApplication::parseCommands()
 
 #if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS) && !defined(MACOS_NE)
 void AmneziaApplication::startLocalServer() {
-    const QString serverName("AmneziaVPNInstance");
+    const QString serverName("AmneziaVPNForkInstance");
     QLocalServer::removeServer(serverName);
 
     QLocalServer *server = new QLocalServer(this);
@@ -262,7 +269,10 @@ void AmneziaApplication::startLocalServer() {
             QLocalSocket *clientConnection = server->nextPendingConnection();
             clientConnection->deleteLater();
         }
-        emit m_coreController->pageController()->raiseMainWindow(); //TODO
+        // a raise request can arrive before init() has finished — ignore it then
+        if (!m_coreController.isNull() && m_coreController->pageController()) {
+            emit m_coreController->pageController()->raiseMainWindow();
+        }
     });
 }
 #endif

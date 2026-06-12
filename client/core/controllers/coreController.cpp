@@ -212,6 +212,9 @@ void CoreController::initControllers()
     m_systemController = new SystemController(this);
     setQmlContextProperty("SystemController", m_systemController);
 
+    m_diagnosticsController = new DiagnosticsController(this);
+    setQmlContextProperty("DiagnosticsController", m_diagnosticsController);
+
     m_networkReachabilityController = new NetworkReachabilityController(this);
     setQmlContextProperty("NetworkReachabilityController", m_networkReachabilityController);
     setQmlContextProperty("NetworkReachability", m_networkReachabilityController);

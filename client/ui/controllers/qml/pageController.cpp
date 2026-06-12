@@ -61,6 +61,11 @@ bool PageController::isStartPageVisible()
 
 QString PageController::getPagePath(PageLoader::PageEnum page)
 {
+#if defined(AMNEZIA_DESKTOP)
+    if (page == PageLoader::PageEnum::PageHome) {
+        return "qrc:/ui/qml/Pages2/PageHomeDesktop.qml";
+    }
+#endif
     QMetaEnum metaEnum = QMetaEnum::fromType<PageLoader::PageEnum>();
     QString pageName = metaEnum.valueToKey(static_cast<int>(page));
     return "qrc:/ui/qml/Pages2/" + pageName + ".qml";

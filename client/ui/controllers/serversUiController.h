@@ -105,6 +105,9 @@ public slots:
     int getServersCount() const;
     QStringList getAllInstalledServicesName(int serverIndex) const;
 
+    QVariantMap getServerInfo(int serverIndex) const;
+    QVariantList getServerContainers(int serverIndex) const;
+
 signals:
     void errorOccurred(const QString &errorMessage);
     void finished(const QString &message);

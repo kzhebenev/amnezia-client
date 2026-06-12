@@ -6,6 +6,7 @@
 #include <QWidget>  
 
 void setDockIconVisible(bool visible);
+void forceDarkAppearance();
 void fixWidget(QWidget *widget);
 #endif
 

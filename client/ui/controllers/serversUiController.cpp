@@ -519,6 +519,66 @@ QStringList ServersUiController::getAllInstalledServicesName(int serverIndex) co
     return servicesName;
 }
 
+QVariantMap ServersUiController::getServerInfo(int serverIndex) const
+{
+    QVariantMap info;
+    const QString serverId = m_serversController->getServerId(serverIndex);
+    if (serverId.isEmpty()) {
+        return info;
+    }
+
+    const DockerContainer defaultContainer = m_serversController->getDefaultContainer(serverId);
+
+    info["serverId"] = serverId;
+    info["name"] = serverName(serverId);
+    info["hostName"] = serverHostName(serverId);
+    info["isDefault"] = (serverId == m_serversController->getDefaultServerId());
+    info["defaultContainerIndex"] = static_cast<int>(defaultContainer);
+    info["defaultContainerName"] = ContainerUtils::containerHumanNames().value(defaultContainer);
+    return info;
+}
+
+QVariantList ServersUiController::getServerContainers(int serverIndex) const
+{
+    QVariantList containers;
+    const QString serverId = m_serversController->getServerId(serverIndex);
+    if (serverId.isEmpty()) {
+        return containers;
+    }
+
+    const auto containersMap = m_serversController->getServerContainersMap(serverId);
+    const DockerContainer defaultContainer = m_serversController->getDefaultContainer(serverId);
+
+    for (auto it = containersMap.constBegin(); it != containersMap.constEnd(); ++it) {
+        if (ContainerUtils::containerService(it.key()) != ServiceType::Vpn) {
+            continue;
+        }
+
+        QVariantMap container;
+        container["containerIndex"] = static_cast<int>(it.key());
+        container["name"] = ContainerUtils::containerHumanNames().value(it.key());
+        container["isDefault"] = (it.key() == defaultContainer);
+
+        QString port;
+        QString transportProto;
+        const QJsonObject containerJson = it.value().toJson();
+        for (const QString &key : containerJson.keys()) {
+            const QJsonObject protocolJson = containerJson.value(key).toObject();
+            if (protocolJson.contains("port")) {
+                port = protocolJson.value("port").toVariant().toString();
+                transportProto = protocolJson.value("transport_proto").toVariant().toString();
+                break;
+            }
+        }
+        container["port"] = port;
+        container["transportProto"] = transportProto;
+
+        containers.append(container);
+    }
+
+    return containers;
+}
+
 int ServersUiController::serverIndexForId(const QString &serverId) const
 {
     return rowForServerId(m_orderedServerDescriptions, serverId);

@@ -54,12 +54,12 @@ Window  {
     }
 
     visible: true
-    width: GC.screenWidth
-    height: GC.screenHeight
-    minimumWidth: GC.isDesktop() ? 360 : 0
-    minimumHeight: GC.isDesktop() ? 640 : 0
-    maximumWidth: 600
-    maximumHeight: 800
+    width: GC.isDesktop() ? 940 : GC.screenWidth
+    height: GC.isDesktop() ? 620 : GC.screenHeight
+    minimumWidth: GC.isDesktop() ? 760 : 0
+    minimumHeight: GC.isDesktop() ? 500 : 0
+    maximumWidth: GC.isDesktop() ? 16384 : 600
+    maximumHeight: GC.isDesktop() ? 16384 : 800
 
     color: AmneziaStyle.color.midnightBlack
 
