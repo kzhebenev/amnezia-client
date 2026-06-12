@@ -27,6 +27,7 @@ PageType {
     property bool pendingSwitch: false
     property bool isRenaming: false
     property int importGeneration: 0
+    property string lastLoggedState: ""
 
     // per-server diagnostics logs
     property var checkLogs: ({})
@@ -137,7 +138,22 @@ PageType {
 
     Connections {
         target: ConnectionController
+
         function onConnectionStateChanged() {
+            var state
+            if (ConnectionController.isConnected) {
+                state = qsTr("Connected")
+            } else if (ConnectionController.isConnectionInProgress) {
+                state = ConnectionController.connectionStateText
+            } else {
+                state = qsTr("Disconnected")
+            }
+            if (state !== root.lastLoggedState) {
+                root.lastLoggedState = state
+                root.appendCheckLog(ServersUiController.defaultServerId,
+                                    Qt.formatTime(new Date(), "hh:mm:ss") + "  " + state)
+            }
+
             if (root.pendingSwitch
                     && !ConnectionController.isConnected
                     && !ConnectionController.isConnectionInProgress) {
@@ -145,6 +161,11 @@ PageType {
                 ServersUiController.setDefaultServerAtIndex(root.selectedIndex)
                 ConnectionController.openConnection()
             }
+        }
+
+        function onConnectionErrorOccurred(errorCode) {
+            root.appendCheckLog(ServersUiController.defaultServerId,
+                                Qt.formatTime(new Date(), "hh:mm:ss") + "  " + qsTr("Connection error (code %1)").arg(errorCode))
         }
     }
 
@@ -370,14 +391,20 @@ PageType {
 
                 SidebarAction {
                     icon: "↻"
-                    text: qsTr("Update from vpn.devkz.ru")
-                    visible: (root.importGeneration, serversListView.count, ImportController.hasSubscriptions())
+                    text: qsTr("Load from vpn.devkz.ru")
                     clickedFunc: function() {
-                        PageController.showBusyIndicator(true)
-                        var updated = ImportController.refreshSubscriptions()
-                        PageController.showBusyIndicator(false)
-                        if (updated) {
-                            PageController.showNotificationMessage(qsTr("Profiles updated"))
+                        if (ImportController.hasSubscriptions()) {
+                            PageController.showBusyIndicator(true)
+                            var updated = ImportController.refreshSubscriptions()
+                            PageController.showBusyIndicator(false)
+                            if (updated) {
+                                PageController.showNotificationMessage(qsTr("Profiles updated"))
+                            }
+                        } else {
+                            addConnectionModal.open()
+                            keyField.text = "https://vpn.devkz.ru/api/sub/"
+                            keyField.forceActiveFocus()
+                            keyField.cursorPosition = keyField.text.length
                         }
                     }
                 }
@@ -745,7 +772,7 @@ PageType {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: qsTr("Check log")
+                                text: qsTr("Connection log")
                                 color: AmneziaStyle.color.mutedGray
                                 font.pixelSize: 11
                                 font.weight: 600
@@ -820,11 +847,12 @@ PageType {
 
         parent: Overlay.overlay
         anchors.centerIn: parent
-        width: 460
+        width: 420
+        padding: 20
         modal: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-        onOpened: keyField.textField.text = ""
+        onOpened: keyField.text = ""
 
         Overlay.modal: Rectangle {
             color: AmneziaStyle.color.translucentMidnightBlack
@@ -838,34 +866,80 @@ PageType {
         }
 
         contentItem: ColumnLayout {
-            spacing: 16
+            spacing: 12
 
-            Text {
+            RowLayout {
                 Layout.fillWidth: true
-                text: qsTr("Add connection")
-                color: AmneziaStyle.color.paleGray
-                font.pixelSize: 17
-                font.weight: 700
+
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Add connection")
+                    color: AmneziaStyle.color.paleGray
+                    font.pixelSize: 15
+                    font.weight: 700
+                }
+
+                Text {
+                    text: "✕"
+                    color: closeModalMouseArea.containsMouse ? AmneziaStyle.color.paleGray
+                                                             : AmneziaStyle.color.mutedGray
+                    font.pixelSize: 13
+
+                    MouseArea {
+                        id: closeModalMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: addConnectionModal.close()
+                    }
+                }
             }
 
-            BasicButtonType {
+            // file picker row
+            Rectangle {
                 Layout.fillWidth: true
+                height: 40
+                radius: 8
+                color: fileRowMouseArea.containsMouse ? AmneziaStyle.color.sheerWhite
+                                                      : AmneziaStyle.color.translucentWhite
 
-                text: qsTr("Choose config file…")
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 8
 
-                defaultColor: AmneziaStyle.color.transparent
-                hoveredColor: AmneziaStyle.color.translucentWhite
-                pressedColor: AmneziaStyle.color.sheerWhite
-                textColor: AmneziaStyle.color.paleGray
-                borderWidth: 1
-                borderColor: AmneziaStyle.color.charcoalGray
+                    Text {
+                        text: "⌘"
+                        visible: false
+                    }
 
-                clickedFunc: function() {
-                    var fileName = SystemController.getFileName(qsTr("Open config file"), qsTr("All files (*)"))
-                    if (fileName !== "") {
-                        if (ImportController.extractConfigFromFile(fileName)) {
-                            ImportController.importConfig()
-                            addConnectionModal.close()
+                    Text {
+                        Layout.fillWidth: true
+                        text: qsTr("Choose config file…")
+                        color: AmneziaStyle.color.paleGray
+                        font.pixelSize: 13
+                    }
+
+                    Text {
+                        text: "›"
+                        color: AmneziaStyle.color.mutedGray
+                        font.pixelSize: 13
+                    }
+                }
+
+                MouseArea {
+                    id: fileRowMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        var fileName = SystemController.getFileName(qsTr("Open config file"), qsTr("All files (*)"))
+                        if (fileName !== "") {
+                            if (ImportController.extractConfigFromFile(fileName)) {
+                                ImportController.importConfig()
+                                addConnectionModal.close()
+                            }
                         }
                     }
                 }
@@ -880,37 +954,102 @@ PageType {
                 Rectangle { Layout.fillWidth: true; height: 1; color: AmneziaStyle.color.translucentWhite }
             }
 
-            TextFieldWithHeaderType {
-                id: keyField
+            Text {
+                text: qsTr("vpn:// key, config text or subscription link")
+                color: AmneziaStyle.color.mutedGray
+                font.pixelSize: 11
+                font.weight: 600
+            }
 
+            // paste field with inline button
+            Rectangle {
                 Layout.fillWidth: true
+                height: 40
+                radius: 8
+                color: AmneziaStyle.color.translucentWhite
+                border.width: keyField.activeFocus ? 1 : 0
+                border.color: AmneziaStyle.color.goldenApricot
 
-                headerText: qsTr("vpn:// key, config text or subscription link")
-                textField.placeholderText: "vpn:// | [Interface]… | https://vpn.devkz.ru/api/sub/…"
-                buttonText: qsTr("Paste")
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 8
+                    spacing: 8
 
-                clickedFunc: function() {
-                    textField.text = ""
-                    textField.paste()
+                    TextInput {
+                        id: keyField
+
+                        Layout.fillWidth: true
+                        color: AmneziaStyle.color.paleGray
+                        font.pixelSize: 13
+                        clip: true
+                        selectByMouse: true
+
+                        Text {
+                            anchors.fill: parent
+                            verticalAlignment: Text.AlignVCenter
+                            visible: keyField.text === "" && !keyField.activeFocus
+                            text: "vpn://…  ·  [Interface]…  ·  https://…"
+                            color: AmneziaStyle.color.mutedGray
+                            font.pixelSize: 13
+                        }
+
+                        Keys.onReturnPressed: root.importFromText(keyField.text)
+                    }
+
+                    Text {
+                        text: qsTr("Paste")
+                        color: pasteMouseArea.containsMouse ? AmneziaStyle.color.paleGray
+                                                            : AmneziaStyle.color.mutedGray
+                        font.pixelSize: 12
+
+                        MouseArea {
+                            id: pasteMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                keyField.text = ""
+                                keyField.paste()
+                            }
+                        }
+                    }
                 }
             }
 
-            BasicButtonType {
+            // import button
+            Rectangle {
                 Layout.fillWidth: true
+                height: 40
+                radius: 8
+                color: importMouseArea.containsMouse ? Qt.lighter(AmneziaStyle.color.goldenApricot, 1.08)
+                                                     : AmneziaStyle.color.goldenApricot
+                opacity: keyField.text.trim() !== "" ? 1.0 : 0.4
 
-                text: qsTr("Import")
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("Import")
+                    color: AmneziaStyle.color.midnightBlack
+                    font.pixelSize: 13
+                    font.weight: 700
+                }
 
-                defaultColor: AmneziaStyle.color.goldenApricot
-                hoveredColor: Qt.lighter(AmneziaStyle.color.goldenApricot, 1.1)
-                pressedColor: Qt.darker(AmneziaStyle.color.goldenApricot, 1.1)
-
-                clickedFunc: function() {
-                    root.importFromText(keyField.textField.text)
+                MouseArea {
+                    id: importMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: keyField.text.trim() !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: {
+                        if (keyField.text.trim() !== "") {
+                            root.importFromText(keyField.text.trim())
+                        }
+                    }
                 }
             }
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 2
                 text: qsTr("Load available profiles from vpn.devkz.ru")
                 color: devkzMouseArea.containsMouse ? AmneziaStyle.color.goldenApricot
                                                     : AmneziaStyle.color.mutedGray
@@ -931,9 +1070,9 @@ PageType {
                                 PageController.showNotificationMessage(qsTr("Profiles updated"))
                             }
                         } else {
-                            keyField.textField.text = "https://vpn.devkz.ru/api/sub/"
-                            keyField.textField.forceActiveFocus()
-                            keyField.textField.cursorPosition = keyField.textField.text.length
+                            keyField.text = "https://vpn.devkz.ru/api/sub/"
+                            keyField.forceActiveFocus()
+                            keyField.cursorPosition = keyField.text.length
                         }
                     }
                 }
