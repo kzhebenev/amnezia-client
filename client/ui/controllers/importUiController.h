@@ -27,6 +27,7 @@ public slots:
     bool importSubscription(const QString &data);
     bool refreshSubscriptions();
     bool hasSubscriptions();
+    void requestSubscriptionStatuses();
     QString getConfig();
     QString getConfigFileName();
     QString getMaliciousWarningText();
@@ -52,6 +53,7 @@ signals:
     void qrDecodingFinished();
     void restoreAppConfig(const QByteArray &data);
     void importConfigChanged();
+    void subscriptionStatusesUpdated(const QVariantMap &statuses);
 
 private:
 #if defined Q_OS_ANDROID || defined Q_OS_IOS

@@ -492,43 +492,164 @@ namespace
 
         return lines.join("\n");
     }
+
+    // Blocking GET used by the synchronous import/refresh paths
+    QByteArray fetchUrlBlocking(const QObject *context, const QUrl &url, const QString &bearerToken, int &httpStatus,
+                                bool &timedOut)
+    {
+        httpStatus = 0;
+        timedOut = false;
+
+        QNetworkAccessManager manager;
+        QNetworkRequest request(url);
+        request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+        request.setRawHeader("Accept", "application/json");
+        if (!bearerToken.isEmpty()) {
+            request.setRawHeader("Authorization", "Bearer " + bearerToken.toUtf8());
+        }
+
+        std::unique_ptr<QNetworkReply> reply(manager.get(request));
+
+        QEventLoop loop;
+        QTimer timeoutTimer;
+        timeoutTimer.setSingleShot(true);
+        QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+        QObject::connect(reply.get(), &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        timeoutTimer.start(15000);
+        loop.exec();
+        Q_UNUSED(context);
+
+        if (!timeoutTimer.isActive()) {
+            reply->abort();
+            timedOut = true;
+            return {};
+        }
+
+        httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() != QNetworkReply::NoError) {
+            qDebug() << "Subscription request failed:" << url.host() << reply->errorString();
+        }
+        return reply->readAll();
+    }
 } // namespace
 
 bool ImportController::isSubscriptionLink(const QString &data)
 {
-    const QString trimmed = data.trimmed();
-    return trimmed.startsWith("https://", Qt::CaseInsensitive) || trimmed.startsWith("http://", Qt::CaseInsensitive);
+    return parseSubscriptionInput(data).isValid();
 }
 
-ErrorCode ImportController::fetchSubscriptionProfiles(const QUrl &url, QJsonArray &profiles) const
+ImportController::SubscriptionEndpoint ImportController::parseSubscriptionInput(const QString &data)
 {
-    QNetworkAccessManager manager;
-    QNetworkRequest request(url);
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-    request.setRawHeader("Accept", "application/json");
+    SubscriptionEndpoint endpoint;
+    const QString trimmed = data.trimmed();
 
-    std::unique_ptr<QNetworkReply> reply(manager.get(request));
+    // bare subscription token -> default panel
+    static const QRegularExpression bareTokenPattern("^[A-Za-z0-9_-]{8,128}$");
+    if (bareTokenPattern.match(trimmed).hasMatch()) {
+        endpoint.baseUrl = "https://vpn.devkz.ru";
+        endpoint.token = trimmed;
+        return endpoint;
+    }
 
-    QEventLoop loop;
-    QTimer timeoutTimer;
-    timeoutTimer.setSingleShot(true);
-    connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    connect(reply.get(), &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    timeoutTimer.start(15000);
-    loop.exec();
+    if (!trimmed.startsWith("http://", Qt::CaseInsensitive) && !trimmed.startsWith("https://", Qt::CaseInsensitive)) {
+        return endpoint;
+    }
 
-    if (!timeoutTimer.isActive()) {
-        reply->abort();
+    const QUrl url(trimmed);
+    if (!url.isValid() || url.host().isEmpty()) {
+        return endpoint;
+    }
+
+    // https://host/api/sub/<token> | https://host/api/v1/sub/<token>
+    static const QRegularExpression pathTokenPattern("^/api/(?:v1/)?sub/([^/]+)/?$");
+    const auto match = pathTokenPattern.match(url.path());
+    if (match.hasMatch()) {
+        endpoint.token = match.captured(1);
+        endpoint.baseUrl = url.scheme() + "://" + url.authority();
+    }
+    return endpoint;
+}
+
+ImportController::SubscriptionEndpoint ImportController::subscriptionEndpointForServer(const QString &serverId) const
+{
+    SubscriptionEndpoint endpoint;
+    const QJsonObject subscriptionInfo = m_serversRepository->serverJson(serverId).value("subscription").toObject();
+    if (subscriptionInfo.isEmpty()) {
+        return endpoint;
+    }
+
+    const QString token = subscriptionInfo.value("token").toString();
+    const QString url = subscriptionInfo.value("url").toString();
+    if (!token.isEmpty()) {
+        endpoint.token = token;
+        endpoint.baseUrl = url;
+        return endpoint;
+    }
+
+    // entry imported before the v1 migration: url contains the token in its path
+    return parseSubscriptionInput(url);
+}
+
+QList<ImportController::SubscriptionEndpoint> ImportController::storedSubscriptionEndpoints() const
+{
+    QList<SubscriptionEndpoint> endpoints;
+    QSet<QString> seenKeys;
+    const QVector<QString> serverIds = m_serversRepository->orderedServerIds();
+    for (const QString &serverId : serverIds) {
+        const SubscriptionEndpoint endpoint = subscriptionEndpointForServer(serverId);
+        if (endpoint.isValid() && !seenKeys.contains(endpoint.cacheKey())) {
+            seenKeys.insert(endpoint.cacheKey());
+            endpoints.append(endpoint);
+        }
+    }
+    return endpoints;
+}
+
+QString ImportController::serverIdForSubscriptionProfile(const SubscriptionEndpoint &endpoint, const QString &profileId,
+                                                         const QString &profileName) const
+{
+    const QVector<QString> serverIds = m_serversRepository->orderedServerIds();
+    for (const QString &serverId : serverIds) {
+        if (subscriptionEndpointForServer(serverId).cacheKey() != endpoint.cacheKey()) {
+            continue;
+        }
+        const QString storedKey =
+                m_serversRepository->serverJson(serverId).value("subscription").toObject().value("profile").toString();
+        if ((!profileId.isEmpty() && storedKey == profileId) || (!profileName.isEmpty() && storedKey == profileName)) {
+            return serverId;
+        }
+    }
+    return {};
+}
+
+ErrorCode ImportController::fetchSubscriptionProfiles(const SubscriptionEndpoint &endpoint, QJsonArray &profiles) const
+{
+    int httpStatus = 0;
+    bool timedOut = false;
+
+    QByteArray body =
+            fetchUrlBlocking(this, QUrl(endpoint.baseUrl + "/api/v1/sub"), endpoint.token, httpStatus, timedOut);
+    if (timedOut) {
         return ErrorCode::ApiConfigTimeoutError;
     }
 
-    if (reply->error() != QNetworkReply::NoError) {
-        qDebug() << "Subscription request failed:" << reply->errorString();
+    // older panels without /api/v1 — fall back to the legacy path endpoint
+    if (httpStatus == 404) {
+        body = fetchUrlBlocking(this, QUrl(endpoint.baseUrl + "/api/sub/" + endpoint.token), QString(), httpStatus,
+                                timedOut);
+        if (timedOut) {
+            return ErrorCode::ApiConfigTimeoutError;
+        }
+    }
+
+    if (httpStatus == 401 || httpStatus == 410) {
+        return ErrorCode::ApiNotFoundError;
+    }
+    if (httpStatus != 200 || body.isEmpty()) {
         return ErrorCode::ApiConfigDownloadError;
     }
 
-    const QJsonObject subscription = QJsonDocument::fromJson(reply->readAll()).object();
-    profiles = subscription.value("profiles").toArray();
+    profiles = QJsonDocument::fromJson(body).object().value("profiles").toArray();
     if (profiles.isEmpty()) {
         return ErrorCode::ApiConfigEmptyError;
     }
@@ -537,7 +658,7 @@ ErrorCode ImportController::fetchSubscriptionProfiles(const QUrl &url, QJsonArra
 }
 
 QJsonObject ImportController::buildServerConfigFromSubscriptionProfile(const QJsonObject &profile,
-                                                                       const QString &subscriptionUrl) const
+                                                                       const SubscriptionEndpoint &endpoint) const
 {
     ConfigTypes configType = ConfigTypes::Invalid;
     QJsonObject serverConfig = extractWireGuardConfig(buildConfFromSubscriptionProfile(profile), configType);
@@ -546,13 +667,21 @@ QJsonObject ImportController::buildServerConfigFromSubscriptionProfile(const QJs
     }
 
     const QString profileName = profile.value("name").toString();
+    QString profileKey = profile.value("id").toString();
+    if (profileKey.isEmpty()) {
+        profileKey = profileName;
+    }
+
     if (!profileName.isEmpty()) {
         serverConfig[configKey::description] = profileName;
     }
 
     QJsonObject subscriptionInfo;
-    subscriptionInfo["url"] = subscriptionUrl;
-    subscriptionInfo["profile"] = profileName;
+    subscriptionInfo["url"] = endpoint.baseUrl;
+    subscriptionInfo["token"] = endpoint.token;
+    subscriptionInfo["profile"] = profileKey;
+    subscriptionInfo["profileName"] = profileName;
+    subscriptionInfo["revision"] = profile.value("revision").toInt();
     serverConfig["subscription"] = subscriptionInfo;
 
     return serverConfig;
@@ -560,20 +689,19 @@ QJsonObject ImportController::buildServerConfigFromSubscriptionProfile(const QJs
 
 ErrorCode ImportController::importSubscription(const QString &data)
 {
-    const QUrl url(data.trimmed());
-    if (!url.isValid() || url.host().isEmpty()) {
+    const SubscriptionEndpoint endpoint = parseSubscriptionInput(data);
+    if (!endpoint.isValid()) {
         return ErrorCode::ImportInvalidConfigError;
     }
 
     QJsonArray profiles;
-    const ErrorCode fetchError = fetchSubscriptionProfiles(url, profiles);
+    const ErrorCode fetchError = fetchSubscriptionProfiles(endpoint, profiles);
     if (fetchError != ErrorCode::NoError) {
         return fetchError;
     }
 
-    // update-in-place when this subscription was already imported earlier
     int updatedCount = 0;
-    const ErrorCode refreshError = refreshSubscriptionFromProfiles(url.toString(), profiles, updatedCount);
+    const ErrorCode refreshError = refreshSubscriptionFromProfiles(endpoint, profiles, updatedCount);
     if (refreshError != ErrorCode::NoError) {
         return refreshError;
     }
@@ -582,35 +710,48 @@ ErrorCode ImportController::importSubscription(const QString &data)
     return ErrorCode::NoError;
 }
 
-// Applies a fetched profile list to the stored servers of one subscription url:
-// updates matching servers in place, adds new profiles, removes vanished ones.
-ErrorCode ImportController::refreshSubscriptionFromProfiles(const QString &subscriptionUrl, const QJsonArray &profiles,
-                                                            int &updatedCount)
+// Applies a fetched profile list to the stored servers of one subscription:
+// updates matching servers in place (by stable profile id, with a name
+// fallback for pre-v1 entries), adds new profiles, removes vanished ones.
+ErrorCode ImportController::refreshSubscriptionFromProfiles(const SubscriptionEndpoint &endpoint,
+                                                            const QJsonArray &profiles, int &updatedCount)
 {
-    QMap<QString, QString> existingServerIdByProfile;
+    QMap<QString, QString> existingServerIdByKey;
     const QVector<QString> serverIds = m_serversRepository->orderedServerIds();
     for (const QString &serverId : serverIds) {
-        const QJsonObject subscriptionInfo = m_serversRepository->serverJson(serverId).value("subscription").toObject();
-        if (subscriptionInfo.value("url").toString() == subscriptionUrl) {
-            existingServerIdByProfile.insert(subscriptionInfo.value("profile").toString(), serverId);
+        if (subscriptionEndpointForServer(serverId).cacheKey() != endpoint.cacheKey()) {
+            continue;
         }
+        const QString storedKey =
+                m_serversRepository->serverJson(serverId).value("subscription").toObject().value("profile").toString();
+        existingServerIdByKey.insert(storedKey, serverId);
     }
 
-    QSet<QString> seenProfiles;
+    QSet<QString> seenKeys;
     for (const QJsonValue &profileValue : profiles) {
         const QJsonObject profile = profileValue.toObject();
         const QString profileName = profile.value("name").toString();
+        QString profileKey = profile.value("id").toString();
+        if (profileKey.isEmpty()) {
+            profileKey = profileName;
+        }
 
-        const QJsonObject serverConfig = buildServerConfigFromSubscriptionProfile(profile, subscriptionUrl);
+        const QJsonObject serverConfig = buildServerConfigFromSubscriptionProfile(profile, endpoint);
         if (serverConfig.isEmpty()) {
             qDebug() << "Skipping invalid subscription profile" << profileName;
             continue;
         }
-        seenProfiles.insert(profileName);
+        seenKeys.insert(profileKey);
+        seenKeys.insert(profileName); // protects pre-v1 entries stored by name
+
+        QString existingServerId = existingServerIdByKey.value(profileKey);
+        if (existingServerId.isEmpty()) {
+            existingServerId = existingServerIdByKey.value(profileName);
+        }
 
         const auto configType = serverConfigUtils::configTypeFromJson(serverConfig);
-        if (existingServerIdByProfile.contains(profileName)) {
-            m_serversRepository->editServer(existingServerIdByProfile.value(profileName), serverConfig, configType);
+        if (!existingServerId.isEmpty()) {
+            m_serversRepository->editServer(existingServerId, serverConfig, configType);
         } else {
             m_serversRepository->addServer(QString(), serverConfig, configType);
         }
@@ -621,8 +762,8 @@ ErrorCode ImportController::refreshSubscriptionFromProfiles(const QString &subsc
         return ErrorCode::ImportInvalidConfigError;
     }
 
-    for (auto it = existingServerIdByProfile.constBegin(); it != existingServerIdByProfile.constEnd(); ++it) {
-        if (!seenProfiles.contains(it.key())) {
+    for (auto it = existingServerIdByKey.constBegin(); it != existingServerIdByKey.constEnd(); ++it) {
+        if (!seenKeys.contains(it.key())) {
             m_serversRepository->removeServer(it.value());
         }
     }
@@ -632,32 +773,24 @@ ErrorCode ImportController::refreshSubscriptionFromProfiles(const QString &subsc
 
 ErrorCode ImportController::refreshSubscriptions(int &updatedCount)
 {
-    QSet<QString> subscriptionUrls;
-    const QVector<QString> serverIds = m_serversRepository->orderedServerIds();
-    for (const QString &serverId : serverIds) {
-        const QString url = m_serversRepository->serverJson(serverId).value("subscription").toObject().value("url").toString();
-        if (!url.isEmpty()) {
-            subscriptionUrls.insert(url);
-        }
-    }
-
-    if (subscriptionUrls.isEmpty()) {
+    const QList<SubscriptionEndpoint> endpoints = storedSubscriptionEndpoints();
+    if (endpoints.isEmpty()) {
         return ErrorCode::ApiConfigEmptyError;
     }
 
     updatedCount = 0;
     ErrorCode lastError = ErrorCode::NoError;
-    for (const QString &subscriptionUrl : subscriptionUrls) {
+    for (const SubscriptionEndpoint &endpoint : endpoints) {
         QJsonArray profiles;
-        const ErrorCode fetchError = fetchSubscriptionProfiles(QUrl(subscriptionUrl), profiles);
+        const ErrorCode fetchError = fetchSubscriptionProfiles(endpoint, profiles);
         if (fetchError != ErrorCode::NoError) {
             lastError = fetchError;
             continue;
         }
 
-        int urlUpdatedCount = 0;
-        refreshSubscriptionFromProfiles(subscriptionUrl, profiles, urlUpdatedCount);
-        updatedCount += urlUpdatedCount;
+        int endpointUpdatedCount = 0;
+        refreshSubscriptionFromProfiles(endpoint, profiles, endpointUpdatedCount);
+        updatedCount += endpointUpdatedCount;
     }
 
     if (updatedCount == 0) {
@@ -670,13 +803,56 @@ ErrorCode ImportController::refreshSubscriptions(int &updatedCount)
 
 bool ImportController::hasSubscriptions() const
 {
-    const QVector<QString> serverIds = m_serversRepository->orderedServerIds();
-    for (const QString &serverId : serverIds) {
-        if (!m_serversRepository->serverJson(serverId).value("subscription").toObject().value("url").toString().isEmpty()) {
-            return true;
-        }
+    return !storedSubscriptionEndpoints().isEmpty();
+}
+
+void ImportController::requestSubscriptionStatuses()
+{
+    const QList<SubscriptionEndpoint> endpoints = storedSubscriptionEndpoints();
+    if (endpoints.isEmpty()) {
+        return;
     }
-    return false;
+
+    if (!m_statusNetworkManager) {
+        m_statusNetworkManager = new QNetworkAccessManager(this);
+    }
+
+    auto pendingReplies = std::make_shared<int>(endpoints.size());
+    auto statuses = std::make_shared<QVariantMap>();
+
+    for (const SubscriptionEndpoint &endpoint : endpoints) {
+        QNetworkRequest request(QUrl(endpoint.baseUrl + "/api/v1/status"));
+        request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+        request.setRawHeader("Accept", "application/json");
+        request.setRawHeader("Authorization", "Bearer " + endpoint.token.toUtf8());
+        request.setTransferTimeout(10000);
+
+        QNetworkReply *reply = m_statusNetworkManager->get(request);
+        connect(reply, &QNetworkReply::finished, this, [this, reply, endpoint, pendingReplies, statuses]() {
+            if (reply->error() == QNetworkReply::NoError) {
+                const QJsonArray profiles =
+                        QJsonDocument::fromJson(reply->readAll()).object().value("profiles").toArray();
+                for (const QJsonValue &profileValue : profiles) {
+                    const QJsonObject profile = profileValue.toObject();
+                    const QString serverId = serverIdForSubscriptionProfile(endpoint, profile.value("id").toString(),
+                                                                            profile.value("name").toString());
+                    if (serverId.isEmpty()) {
+                        continue;
+                    }
+                    QVariantMap status;
+                    status["alive"] = profile.value("alive").toBool();
+                    status["reason"] = profile.value("reason").toString();
+                    status["handshakeSecondsAgo"] = profile.value("last_handshake_seconds_ago").toInt(-1);
+                    statuses->insert(serverId, status);
+                }
+            }
+            reply->deleteLater();
+
+            if (--(*pendingReplies) == 0) {
+                emit subscriptionStatusesUpdated(*statuses);
+            }
+        });
+    }
 }
 
 QJsonObject ImportController::processNativeWireGuardConfig(const QJsonObject &config)

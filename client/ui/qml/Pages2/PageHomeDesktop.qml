@@ -28,6 +28,7 @@ PageType {
     property bool isRenaming: false
     property int importGeneration: 0
     property string lastLoggedState: ""
+    property var subscriptionStatuses: ({})
 
     // per-server diagnostics logs
     property var checkLogs: ({})
@@ -174,7 +175,19 @@ PageType {
         function onImportFinished() {
             root.importGeneration += 1
             root.refreshSelection()
+            ImportController.requestSubscriptionStatuses()
         }
+        function onSubscriptionStatusesUpdated(statuses) {
+            root.subscriptionStatuses = statuses
+        }
+    }
+
+    Timer {
+        interval: 60000
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: ImportController.requestSubscriptionStatuses()
     }
 
     Connections {
@@ -339,8 +352,16 @@ PageType {
                                 width: 8
                                 height: 8
                                 radius: 4
-                                color: isDefault && ConnectionController.isConnected ? root.macGreen
-                                                                                     : AmneziaStyle.color.charcoalGray
+                                color: {
+                                    if (isDefault && ConnectionController.isConnected) {
+                                        return root.macGreen
+                                    }
+                                    var status = root.subscriptionStatuses[serverId]
+                                    if (status !== undefined) {
+                                        return status.alive ? Qt.alpha(root.macGreen, 0.55) : root.macRed
+                                    }
+                                    return AmneziaStyle.color.charcoalGray
+                                }
                             }
 
                             ColumnLayout {
@@ -357,8 +378,20 @@ PageType {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: hostName
-                                    color: AmneziaStyle.color.mutedGray
+                                    text: {
+                                        var status = root.subscriptionStatuses[serverId]
+                                        if (status !== undefined && !status.alive) {
+                                            return hostName + " · offline"
+                                        }
+                                        return hostName
+                                    }
+                                    color: {
+                                        var status = root.subscriptionStatuses[serverId]
+                                        if (status !== undefined && !status.alive) {
+                                            return Qt.alpha(root.macRed, 0.8)
+                                        }
+                                        return AmneziaStyle.color.mutedGray
+                                    }
                                     font.pixelSize: 11
                                     elide: Text.ElideRight
                                 }
@@ -693,6 +726,48 @@ PageType {
                                     return "—"
                                 }
                                 color: AmneziaStyle.color.paleGray
+                                font.pixelSize: 13
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: AmneziaStyle.color.translucentWhite
+                            visible: root.subscriptionStatuses[root.currentServerId()] !== undefined
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            visible: root.subscriptionStatuses[root.currentServerId()] !== undefined
+
+                            Text {
+                                Layout.preferredWidth: 120
+                                text: qsTr("Availability")
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 13
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: {
+                                    var status = root.subscriptionStatuses[root.currentServerId()]
+                                    if (status === undefined) {
+                                        return ""
+                                    }
+                                    if (status.alive) {
+                                        return status.handshakeSecondsAgo >= 0
+                                                ? qsTr("Online — handshake %1 s ago").arg(status.handshakeSecondsAgo)
+                                                : qsTr("Online")
+                                    }
+                                    return status.reason === "no_handshake_yet" ? qsTr("Offline — no handshake yet")
+                                                                                : qsTr("Offline — handshake timeout")
+                                }
+                                color: {
+                                    var status = root.subscriptionStatuses[root.currentServerId()]
+                                    return (status !== undefined && !status.alive) ? root.macRed
+                                                                                   : AmneziaStyle.color.paleGray
+                                }
                                 font.pixelSize: 13
                             }
                         }
