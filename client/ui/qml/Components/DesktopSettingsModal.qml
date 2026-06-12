@@ -17,7 +17,7 @@ Popup {
     parent: Overlay.overlay
     anchors.centerIn: parent
     width: 700
-    height: 480
+    height: 540
     padding: 0
     modal: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -186,6 +186,92 @@ Popup {
         font.weight: 600
     }
 
+    component ModeOption: Item {
+        id: modeOption
+
+        property string label
+        property bool selected: false
+        property var onPick
+
+        Layout.fillWidth: true
+        implicitHeight: 24
+
+        RowLayout {
+            anchors.fill: parent
+            spacing: 8
+
+            Text {
+                Layout.fillWidth: true
+                text: modeOption.label
+                color: modeOptionMouseArea.containsMouse ? AmneziaStyle.color.paleGray
+                                                         : (modeOption.selected ? AmneziaStyle.color.paleGray
+                                                                                : AmneziaStyle.color.mutedGray)
+                font.pixelSize: 12
+                elide: Text.ElideRight
+            }
+
+            Text {
+                text: "✓"
+                visible: modeOption.selected
+                color: AmneziaStyle.color.goldenApricot
+                font.pixelSize: 12
+            }
+        }
+
+        MouseArea {
+            id: modeOptionMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (modeOption.onPick) {
+                    modeOption.onPick()
+                }
+            }
+        }
+    }
+
+    component RemovableListRow: Item {
+        id: removableRow
+
+        property string label
+        property var onRemove
+
+        width: ListView.view ? ListView.view.width : 0
+        height: 26
+
+        Text {
+            anchors.left: parent.left
+            anchors.right: removeMark.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: removableRow.label
+            color: AmneziaStyle.color.paleGray
+            font.pixelSize: 12
+            elide: Text.ElideMiddle
+        }
+
+        Text {
+            id: removeMark
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: "✕"
+            visible: removableRowMouseArea.containsMouse
+            color: root.macRed
+            font.pixelSize: 11
+        }
+
+        MouseArea {
+            id: removableRowMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: {
+                if (removableRow.onRemove) {
+                    removableRow.onRemove()
+                }
+            }
+        }
+    }
+
     component DnsField: Rectangle {
         property alias text: dnsInput.text
         property var onCommit
@@ -242,7 +328,7 @@ Popup {
                 }
 
                 Repeater {
-                    model: [qsTr("General"), qsTr("Connection"), qsTr("Logging"), qsTr("Backup"), qsTr("About")]
+                    model: [qsTr("General"), qsTr("Connection"), qsTr("Split tunneling"), qsTr("Logging"), qsTr("Backup"), qsTr("About")]
 
                     delegate: Item {
                         required property int index
@@ -552,6 +638,147 @@ Popup {
                     }
 
                     Item { Layout.fillHeight: true }
+                }
+
+                // ============ Split tunneling ============
+                ColumnLayout {
+                    spacing: 10
+
+                    SectionTitle { text: qsTr("SPLIT TUNNELING") }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: ConnectionController.isConnected
+                        text: qsTr("Disconnect the VPN to change split tunneling settings")
+                        color: AmneziaStyle.color.goldenApricot
+                        font.pixelSize: 11
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        spacing: 10
+                        enabled: !ConnectionController.isConnected
+                        opacity: enabled ? 1.0 : 0.5
+
+                        SettingsCard {
+                            SwitchRow {
+                                label: qsTr("Site-based split tunneling")
+                                checked: IpSplitTunnelingController.isSplitTunnelingEnabled
+                                onToggle: function(value) { IpSplitTunnelingController.toggleSplitTunneling(value) }
+                            }
+
+                            CardDivider {}
+
+                            ModeOption {
+                                label: qsTr("Only sites from the list go through the VPN")
+                                selected: IpSplitTunnelingController.routeMode === 1
+                                onPick: function() { IpSplitTunnelingController.routeMode = 1 }
+                            }
+
+                            ModeOption {
+                                label: qsTr("All sites except the list go through the VPN")
+                                selected: IpSplitTunnelingController.routeMode === 2
+                                onPick: function() { IpSplitTunnelingController.routeMode = 2 }
+                            }
+
+                            CardDivider {}
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                DnsField {
+                                    id: siteField
+                                    Layout.fillWidth: true
+                                    Layout.preferredWidth: -1
+                                }
+
+                                MiniButton {
+                                    text: qsTr("Add")
+                                    clickedFunc: function() {
+                                        if (siteField.text.trim() !== "") {
+                                            IpSplitTunnelingController.addSite(siteField.text.trim())
+                                            siteField.text = ""
+                                        }
+                                    }
+                                }
+                            }
+
+                            ListView {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 84
+                                clip: true
+                                model: IpSplitTunnelingModel
+                                boundsBehavior: Flickable.StopAtBounds
+
+                                ScrollBar.vertical: ScrollBar {}
+
+                                delegate: RemovableListRow {
+                                    label: url
+                                    onRemove: function() { IpSplitTunnelingController.removeSite(index) }
+                                }
+                            }
+                        }
+
+                        SettingsCard {
+                            SwitchRow {
+                                label: qsTr("App-based split tunneling")
+                                checked: AppSplitTunnelingController.isSplitTunnelingEnabled
+                                onToggle: function(value) { AppSplitTunnelingController.toggleSplitTunneling(value) }
+                            }
+
+                            CardDivider {}
+
+                            ModeOption {
+                                label: qsTr("Only apps from the list go through the VPN")
+                                selected: AppSplitTunnelingController.routeMode === 1
+                                onPick: function() { AppSplitTunnelingController.routeMode = 1 }
+                            }
+
+                            ModeOption {
+                                label: qsTr("All apps except the list go through the VPN")
+                                selected: AppSplitTunnelingController.routeMode === 2
+                                onPick: function() { AppSplitTunnelingController.routeMode = 2 }
+                            }
+
+                            CardDivider {}
+
+                            RowLayout {
+                                Layout.fillWidth: true
+
+                                MiniButton {
+                                    text: qsTr("Add application…")
+                                    clickedFunc: function() {
+                                        var fileName = SystemController.getFileName(qsTr("Open executable file"),
+                                                                                    qsTr("Applications (*)"))
+                                        if (fileName !== "") {
+                                            AppSplitTunnelingController.addApp(fileName)
+                                        }
+                                    }
+                                }
+
+                                Item { Layout.fillWidth: true }
+                            }
+
+                            ListView {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 56
+                                clip: true
+                                model: AppSplitTunnelingModel
+                                boundsBehavior: Flickable.StopAtBounds
+
+                                ScrollBar.vertical: ScrollBar {}
+
+                                delegate: RemovableListRow {
+                                    label: appPath
+                                    onRemove: function() { AppSplitTunnelingController.removeApp(index) }
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillHeight: true }
+                    }
                 }
 
                 // ============ Logging ============
