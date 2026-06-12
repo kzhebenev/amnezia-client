@@ -412,7 +412,7 @@ PageType {
                 SidebarAction {
                     icon: "⚙"
                     text: qsTr("Settings")
-                    clickedFunc: function() { PageController.goToPage(PageEnum.PageSettings) }
+                    clickedFunc: function() { settingsModal.open() }
                 }
 
                 Item { height: 8 }
@@ -839,6 +839,10 @@ PageType {
                 }
             }
         }
+    }
+
+    DesktopSettingsModal {
+        id: settingsModal
     }
 
     // ===================== Add connection modal =====================
