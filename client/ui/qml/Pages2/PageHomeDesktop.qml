@@ -77,15 +77,14 @@ PageType {
                 return
             }
             var switchIndex = selectedIndex
-            showQuestionDrawer(qsTr("Switch connection?"),
-                               qsTr("The current connection will be closed, then \"%1\" will be connected.").arg(selectedInfo.name),
-                               qsTr("Switch"), qsTr("Cancel"),
-                               function() {
-                                   root.pendingSwitch = true
-                                   root.selectedIndex = switchIndex
-                                   ConnectionController.closeConnection()
-                               },
-                               function() {})
+            confirmDialog.ask(qsTr("Switch connection?"),
+                              qsTr("The current connection will be closed, then \"%1\" will be connected.").arg(selectedInfo.name),
+                              qsTr("Switch"), false,
+                              function() {
+                                  root.pendingSwitch = true
+                                  root.selectedIndex = switchIndex
+                                  ConnectionController.closeConnection()
+                              })
         } else {
             if (!selectedInfo.isDefault) {
                 ServersUiController.setDefaultServerAtIndex(selectedIndex)
@@ -814,15 +813,14 @@ PageType {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         var serverId = root.selectedInfo.serverId
-                                        showQuestionDrawer(qsTr("Delete \"%1\"?").arg(root.selectedInfo.name),
-                                                           qsTr("The connection profile will be removed from this device."),
-                                                           qsTr("Delete"), qsTr("Cancel"),
-                                                           function() {
-                                                               ServersUiController.removeServer(serverId)
-                                                               root.selectedIndex = -1
-                                                               root.refreshSelection()
-                                                           },
-                                                           function() {})
+                                        confirmDialog.ask(qsTr("Delete \"%1\"?").arg(root.selectedInfo.name),
+                                                          qsTr("The connection profile will be removed from this device."),
+                                                          qsTr("Delete"), true,
+                                                          function() {
+                                                              ServersUiController.removeServer(serverId)
+                                                              root.selectedIndex = -1
+                                                              root.refreshSelection()
+                                                          })
                                     }
                                 }
                             }
@@ -918,6 +916,10 @@ PageType {
 
     DesktopSettingsModal {
         id: settingsModal
+    }
+
+    DesktopConfirmDialog {
+        id: confirmDialog
     }
 
     // ===================== Add connection modal =====================

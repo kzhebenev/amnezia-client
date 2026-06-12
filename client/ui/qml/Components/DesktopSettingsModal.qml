@@ -303,6 +303,10 @@ Popup {
 
     // ---------- layout ----------
 
+    DesktopConfirmDialog {
+        id: settingsConfirmDialog
+    }
+
     contentItem: RowLayout {
         spacing: 0
 
@@ -551,11 +555,10 @@ Popup {
                                 text: qsTr("Reset…")
                                 destructive: true
                                 clickedFunc: function() {
-                                    showQuestionDrawer(qsTr("Reset all settings?"),
-                                                       qsTr("All servers and application settings will be removed."),
-                                                       qsTr("Reset"), qsTr("Cancel"),
-                                                       function() { SettingsController.clearSettings() },
-                                                       function() {})
+                                    settingsConfirmDialog.ask(qsTr("Reset all settings?"),
+                                                              qsTr("All servers and application settings will be removed."),
+                                                              qsTr("Reset"), true,
+                                                              function() { SettingsController.clearSettings() })
                                 }
                             }
                         }

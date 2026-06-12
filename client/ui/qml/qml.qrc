@@ -3,6 +3,7 @@
         <file>Components/AdLabel.qml</file>
         <file>Components/ConnectButton.qml</file>
         <file>Components/ConnectionTypeSelectionDrawer.qml</file>
+        <file>Components/DesktopConfirmDialog.qml</file>
         <file>Components/DesktopSettingsModal.qml</file>
         <file>Components/GamepadLoader.qml</file>
         <file>Components/HomeContainersListView.qml</file>
