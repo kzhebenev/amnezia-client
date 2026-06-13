@@ -3675,6 +3675,46 @@ Thank you for staying with us!</source>
         <source>Let&apos;s get started</source>
         <translation>Приступим</translation>
     </message>
+    <message>
+        <source>Add your first connection to get started</source>
+        <translation>Добавьте первое подключение, чтобы начать</translation>
+    </message>
+    <message>
+        <source>DEVKZ VPN</source>
+        <translation>DEVKZ VPN</translation>
+    </message>
+    <message>
+        <source>Other connection options</source>
+        <translation>Другие способы подключения</translation>
+    </message>
+    <message>
+        <source>Subscription token, vpn:// key or config text</source>
+        <translation>Токен подписки, vpn://-ключ или текст конфигурации</translation>
+    </message>
+    <message>
+        <source>Subscription imported</source>
+        <translation>Подписка импортирована</translation>
+    </message>
+    <message>
+        <source>Import</source>
+        <translation>Импортировать</translation>
+    </message>
+    <message>
+        <source>Choose config file…</source>
+        <translation>Выбрать файл конфигурации…</translation>
+    </message>
+    <message>
+        <source>Open config file</source>
+        <translation>Открыть файл конфигурации</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Вставить</translation>
+    </message>
+    <message>
+        <source>or</source>
+        <translation>или</translation>
+    </message>
 </context>
 <context>
     <name>PageSetupWizardTextKey</name>
@@ -5397,6 +5437,570 @@ FileZilla или другие SFTP-клиенты, а также смонтир�
         <location filename="../ui/qml/main2.qml" line="268"/>
         <source>Save</source>
         <translation>Сохранить</translation>
+    </message>
+</context>
+<context>
+    <name>PageHomeDesktop</name>
+    <message>
+        <source>Add a connection to get started</source>
+        <translation>Добавьте подключение, чтобы начать</translation>
+    </message>
+    <message>
+        <source>Add connection</source>
+        <translation>Добавить подключение</translation>
+    </message>
+    <message>
+        <source>All files (*)</source>
+        <translation>Все файлы (*)</translation>
+    </message>
+    <message>
+        <source>Availability</source>
+        <translation>Доступность</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <source>Checking…</source>
+        <translation>Проверка…</translation>
+    </message>
+    <message>
+        <source>Choose config file…</source>
+        <translation>Выбрать файл конфигурации…</translation>
+    </message>
+    <message>
+        <source>Clear</source>
+        <translation>Очистить</translation>
+    </message>
+    <message>
+        <source>Connected</source>
+        <translation>Подключено</translation>
+    </message>
+    <message>
+        <source>Connection details…</source>
+        <translation>Сведения о подключении…</translation>
+    </message>
+    <message>
+        <source>Connection error (code %1)</source>
+        <translation>Ошибка подключения (код %1)</translation>
+    </message>
+    <message>
+        <source>Connection log</source>
+        <translation>Журнал подключения</translation>
+    </message>
+    <message>
+        <source>Connections</source>
+        <translation>Подключения</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Копировать</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+    <message>
+        <source>Delete "%1"?</source>
+        <translation>Удалить «%1»?</translation>
+    </message>
+    <message>
+        <source>Delete connection</source>
+        <translation>Удалить подключение</translation>
+    </message>
+    <message>
+        <source>Disconnected</source>
+        <translation>Отключено</translation>
+    </message>
+    <message>
+        <source>Import</source>
+        <translation>Импортировать</translation>
+    </message>
+    <message>
+        <source>Load available profiles from vpn.devkz.ru</source>
+        <translation>Загрузить доступные профили с vpn.devkz.ru</translation>
+    </message>
+    <message>
+        <source>Load from vpn.devkz.ru</source>
+        <translation>Загрузить с vpn.devkz.ru</translation>
+    </message>
+    <message>
+        <source>Log copied</source>
+        <translation>Журнал скопирован</translation>
+    </message>
+    <message>
+        <source>Not connected</source>
+        <translation>Не подключено</translation>
+    </message>
+    <message>
+        <source>ON</source>
+        <translation>ВКЛ</translation>
+    </message>
+    <message>
+        <source>Offline — handshake timeout</source>
+        <translation>Офлайн — таймаут handshake</translation>
+    </message>
+    <message>
+        <source>Offline — no handshake yet</source>
+        <translation>Офлайн — ещё нет handshake</translation>
+    </message>
+    <message>
+        <source>Online</source>
+        <translation>Онлайн</translation>
+    </message>
+    <message>
+        <source>Online — handshake %1 s ago</source>
+        <translation>Онлайн — handshake %1 с назад</translation>
+    </message>
+    <message>
+        <source>Open config file</source>
+        <translation>Открыть файл конфигурации</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Вставить</translation>
+    </message>
+    <message>
+        <source>Port</source>
+        <translation>Порт</translation>
+    </message>
+    <message>
+        <source>Profiles updated</source>
+        <translation>Профили обновлены</translation>
+    </message>
+    <message>
+        <source>Protocol</source>
+        <translation>Протокол</translation>
+    </message>
+    <message>
+        <source>Server</source>
+        <translation>Сервер</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Настройки</translation>
+    </message>
+    <message>
+        <source>Subscription imported</source>
+        <translation>Подписка импортирована</translation>
+    </message>
+    <message>
+        <source>Switch</source>
+        <translation>Переключить</translation>
+    </message>
+    <message>
+        <source>Switch connection?</source>
+        <translation>Переключить подключение?</translation>
+    </message>
+    <message>
+        <source>The connection profile will be removed from this device.</source>
+        <translation>Профиль подключения будет удалён с этого устройства.</translation>
+    </message>
+    <message>
+        <source>The current connection will be closed, then "%1" will be connected.</source>
+        <translation>Текущее подключение будет закрыто, затем подключится «%1».</translation>
+    </message>
+    <message>
+        <source>or</source>
+        <translation>или</translation>
+    </message>
+    <message>
+        <source>vpn:// key, config text or subscription link</source>
+        <translation>vpn://-ключ, текст конфигурации или ссылка подписки</translation>
+    </message>
+</context>
+<context>
+    <name>DesktopSettingsModal</name>
+    <message>
+        <source>%1 min ago</source>
+        <translation>%1 мин назад</translation>
+    </message>
+    <message>
+        <source>%1 s ago</source>
+        <translation>%1 с назад</translation>
+    </message>
+    <message>
+        <source>ABOUT</source>
+        <translation>О ПРИЛОЖЕНИИ</translation>
+    </message>
+    <message>
+        <source>About</source>
+        <translation>О приложении</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>Добавить</translation>
+    </message>
+    <message>
+        <source>Add a vpn.devkz.ru subscription to see panel diagnostics</source>
+        <translation>Добавьте подписку vpn.devkz.ru, чтобы видеть диагностику панели</translation>
+    </message>
+    <message>
+        <source>Add application…</source>
+        <translation>Добавить приложение…</translation>
+    </message>
+    <message>
+        <source>All apps except the list go through the VPN</source>
+        <translation>Через VPN идут все приложения, кроме списка</translation>
+    </message>
+    <message>
+        <source>All servers and application settings will be removed.</source>
+        <translation>Все серверы и настройки приложения будут удалены.</translation>
+    </message>
+    <message>
+        <source>All sites except the list go through the VPN</source>
+        <translation>Через VPN идут все сайты, кроме списка</translation>
+    </message>
+    <message>
+        <source>AmneziaVPN on GitHub</source>
+        <translation>AmneziaVPN на GitHub</translation>
+    </message>
+    <message>
+        <source>AmneziaVPN website</source>
+        <translation>Сайт AmneziaVPN</translation>
+    </message>
+    <message>
+        <source>App-based split tunneling</source>
+        <translation>Раздельное туннелирование по приложениям</translation>
+    </message>
+    <message>
+        <source>Applications (*)</source>
+        <translation>Приложения (*)</translation>
+    </message>
+    <message>
+        <source>BACKUP</source>
+        <translation>РЕЗЕРВНАЯ КОПИЯ</translation>
+    </message>
+    <message>
+        <source>Backup</source>
+        <translation>Резервная копия</translation>
+    </message>
+    <message>
+        <source>Backup created</source>
+        <translation>Резервная копия создана</translation>
+    </message>
+    <message>
+        <source>Backup files (*.backup)</source>
+        <translation>Файлы резервных копий (*.backup)</translation>
+    </message>
+    <message>
+        <source>Block internet even when the VPN is disconnected manually</source>
+        <translation>Блокировать интернет даже при ручном отключении VPN</translation>
+    </message>
+    <message>
+        <source>Block internet if the VPN connection drops</source>
+        <translation>Блокировать интернет при разрыве VPN</translation>
+    </message>
+    <message>
+        <source>CONNECTION</source>
+        <translation>ПОДКЛЮЧЕНИЕ</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>Проверено</translation>
+    </message>
+    <message>
+        <source>Clear</source>
+        <translation>Очистить</translation>
+    </message>
+    <message>
+        <source>Client logs</source>
+        <translation>Журналы клиента</translation>
+    </message>
+    <message>
+        <source>DEVKZ VPN — by the devkz team and Claude AI, built on a fork of the open-source AmneziaVPN client (GPL-3.0), with a desktop redesign and vpn.devkz.ru integration.</source>
+        <translation>DEVKZ VPN — от команды devkz и Claude AI, на базе форка открытого клиента AmneziaVPN (GPL-3.0), с переработанным десктопным интерфейсом и интеграцией vpn.devkz.ru.</translation>
+    </message>
+    <message>
+        <source>Disconnect the VPN to change split tunneling settings</source>
+        <translation>Отключите VPN, чтобы изменить настройки раздельного туннелирования</translation>
+    </message>
+    <message>
+        <source>Enable logs</source>
+        <translation>Включить журналы</translation>
+    </message>
+    <message>
+        <source>Exits</source>
+        <translation>Выходы</translation>
+    </message>
+    <message>
+        <source>Export…</source>
+        <translation>Экспорт…</translation>
+    </message>
+    <message>
+        <source>Fork on GitHub</source>
+        <translation>Форк на GitHub</translation>
+    </message>
+    <message>
+        <source>GENERAL</source>
+        <translation>ОБЩИЕ</translation>
+    </message>
+    <message>
+        <source>Gateways</source>
+        <translation>Шлюзы</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>Общие</translation>
+    </message>
+    <message>
+        <source>Issues</source>
+        <translation>Проблемы</translation>
+    </message>
+    <message>
+        <source>Kill switch</source>
+        <translation>Аварийное отключение (Kill switch)</translation>
+    </message>
+    <message>
+        <source>LOGGING</source>
+        <translation>ЖУРНАЛИРОВАНИЕ</translation>
+    </message>
+    <message>
+        <source>Language</source>
+        <translation>Язык</translation>
+    </message>
+    <message>
+        <source>Launch at login</source>
+        <translation>Запускать при входе</translation>
+    </message>
+    <message>
+        <source>Logging</source>
+        <translation>Журналирование</translation>
+    </message>
+    <message>
+        <source>Logs (*.log)</source>
+        <translation>Журналы (*.log)</translation>
+    </message>
+    <message>
+        <source>Logs cleared</source>
+        <translation>Журналы очищены</translation>
+    </message>
+    <message>
+        <source>MSK hub · active exit</source>
+        <translation>Узел MSK · активный выход</translation>
+    </message>
+    <message>
+        <source>Make backup…</source>
+        <translation>Создать копию…</translation>
+    </message>
+    <message>
+        <source>Only apps from the list go through the VPN</source>
+        <translation>Через VPN идут только приложения из списка</translation>
+    </message>
+    <message>
+        <source>Only sites from the list go through the VPN</source>
+        <translation>Через VPN идут только сайты из списка</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Открыть</translation>
+    </message>
+    <message>
+        <source>Open executable file</source>
+        <translation>Открыть исполняемый файл</translation>
+    </message>
+    <message>
+        <source>Open folder</source>
+        <translation>Открыть папку</translation>
+    </message>
+    <message>
+        <source>Panel is unreachable or still loading…</source>
+        <translation>Панель недоступна или ещё загружается…</translation>
+    </message>
+    <message>
+        <source>Panel status</source>
+        <translation>Статус панели</translation>
+    </message>
+    <message>
+        <source>Primary DNS</source>
+        <translation>Основной DNS</translation>
+    </message>
+    <message>
+        <source>RU (local)</source>
+        <translation>RU (локальный)</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>Обновить</translation>
+    </message>
+    <message>
+        <source>Removes all servers and resets the application</source>
+        <translation>Удаляет все серверы и сбрасывает приложение</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>Сбросить</translation>
+    </message>
+    <message>
+        <source>Reset all settings</source>
+        <translation>Сбросить все настройки</translation>
+    </message>
+    <message>
+        <source>Reset all settings?</source>
+        <translation>Сбросить все настройки?</translation>
+    </message>
+    <message>
+        <source>Reset…</source>
+        <translation>Сбросить…</translation>
+    </message>
+    <message>
+        <source>Restore…</source>
+        <translation>Восстановить…</translation>
+    </message>
+    <message>
+        <source>Route presets</source>
+        <translation>Готовые маршруты</translation>
+    </message>
+    <message>
+        <source>SPLIT TUNNELING</source>
+        <translation>РАЗДЕЛЬНОЕ ТУННЕЛИРОВАНИЕ</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>Save all connection profiles and application settings to a file, or restore them from a previously made backup.</source>
+        <translation>Сохраните все профили подключений и настройки приложения в файл или восстановите их из ранее созданной копии.</translation>
+    </message>
+    <message>
+        <source>Save app and service logs for troubleshooting</source>
+        <translation>Сохранять журналы приложения и службы для диагностики</translation>
+    </message>
+    <message>
+        <source>Secondary DNS</source>
+        <translation>Дополнительный DNS</translation>
+    </message>
+    <message>
+        <source>Service logs</source>
+        <translation>Журналы службы</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Настройки</translation>
+    </message>
+    <message>
+        <source>Site-based split tunneling</source>
+        <translation>Раздельное туннелирование по сайтам</translation>
+    </message>
+    <message>
+        <source>Split tunneling</source>
+        <translation>Раздельное туннелирование</translation>
+    </message>
+    <message>
+        <source>Start minimized</source>
+        <translation>Запускать свёрнутым</translation>
+    </message>
+    <message>
+        <source>Strict kill switch</source>
+        <translation>Строгий kill switch</translation>
+    </message>
+    <message>
+        <source>Use AmneziaDNS</source>
+        <translation>Использовать AmneziaDNS</translation>
+    </message>
+    <message>
+        <source>Version</source>
+        <translation>Версия</translation>
+    </message>
+    <message>
+        <source>When the server has the DNS service installed</source>
+        <translation>Когда на сервере установлена служба DNS</translation>
+    </message>
+    <message>
+        <source>Works together with launch at login</source>
+        <translation>Работает вместе с запуском при входе</translation>
+    </message>
+    <message>
+        <source>Your profiles</source>
+        <translation>Ваши профили</translation>
+    </message>
+    <message>
+        <source>active</source>
+        <translation>активный</translation>
+    </message>
+    <message>
+        <source>connected · handshake %1 s ago</source>
+        <translation>подключено · handshake %1 с назад</translation>
+    </message>
+    <message>
+        <source>from %1  ·  %2</source>
+        <translation>из %1  ·  %2</translation>
+    </message>
+    <message>
+        <source>not connected</source>
+        <translation>не подключено</translation>
+    </message>
+    <message>
+        <source>s2s %1 s · %2 clients</source>
+        <translation>s2s %1 с · %2 клиентов</translation>
+    </message>
+    <message>
+        <source>vpn.devkz.ru</source>
+        <translation>vpn.devkz.ru</translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation>Подключение</translation>
+    </message>
+</context>
+<context>
+    <name>DesktopConfirmDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+</context>
+<context>
+    <name>DesktopConnectionDetailsModal</name>
+    <message>
+        <source>Allowed IPs</source>
+        <translation>Разрешённые IP</translation>
+    </message>
+    <message>
+        <source>Client address</source>
+        <translation>Адрес клиента</translation>
+    </message>
+    <message>
+        <source>Connection details</source>
+        <translation>Сведения о подключении</translation>
+    </message>
+    <message>
+        <source>Copied</source>
+        <translation>Скопировано</translation>
+    </message>
+    <message>
+        <source>Endpoint</source>
+        <translation>Конечная точка</translation>
+    </message>
+    <message>
+        <source>Keepalive</source>
+        <translation>Keepalive</translation>
+    </message>
+    <message>
+        <source>MTU</source>
+        <translation>MTU</translation>
+    </message>
+    <message>
+        <source>Obfuscation</source>
+        <translation>Обфускация</translation>
+    </message>
+    <message>
+        <source>Server public key</source>
+        <translation>Публичный ключ сервера</translation>
+    </message>
+    <message>
+        <source>These parameters come from the server and are managed by your VPN provider.</source>
+        <translation>Эти параметры приходят с сервера и управляются вашим VPN-провайдером.</translation>
+    </message>
+    <message>
+        <source>copy</source>
+        <translation>копировать</translation>
     </message>
 </context>
 </TS>

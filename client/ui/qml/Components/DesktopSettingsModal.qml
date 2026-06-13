@@ -323,7 +323,7 @@ Popup {
         // section rail
         Rectangle {
             Layout.fillHeight: true
-            Layout.preferredWidth: 172
+            Layout.preferredWidth: 210
             color: AmneziaStyle.color.transparent
 
             ColumnLayout {
@@ -364,10 +364,12 @@ Popup {
                         Text {
                             anchors.fill: parent
                             anchors.leftMargin: 18
+                            anchors.rightMargin: 12
                             verticalAlignment: Text.AlignVCenter
                             text: modelData
                             color: AmneziaStyle.color.paleGray
-                            font.pixelSize: 13
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
                         }
 
                         MouseArea {
