@@ -22,8 +22,16 @@ WireguardProtocol::WireguardProtocol(const QJsonObject &configuration, QObject *
                    const QString& deviceIpv4Address, uint64_t txBytes,
                    uint64_t rxBytes) {
                 // feed cumulative counters into the stats pipeline (was ignored,
-                // so the traffic graph stayed empty for WireGuard/AmneziaWG)
-                setBytesChanged(rxBytes, txBytes);
+                // so the traffic graph stayed empty for WireGuard/AmneziaWG).
+                // The first reading just seeds the baseline: an already-running
+                // tunnel reports a large total that would otherwise look like a
+                // huge one-second spike.
+                if (!m_bytesPrimed) {
+                    m_bytesPrimed = true;
+                    primeByteCounters(rxBytes, txBytes);
+                } else {
+                    setBytesChanged(rxBytes, txBytes);
+                }
 
                 const QString previousGateway = m_vpnGateway;
                 const QString previousLocal = m_vpnLocalAddress;
@@ -42,7 +50,10 @@ WireguardProtocol::WireguardProtocol(const QJsonObject &configuration, QObject *
             });
 
     connect(m_impl.get(), &ControllerImpl::disconnected, this,
-            [this]() { setConnectionState(Vpn::ConnectionState::Disconnected); });
+            [this]() {
+                m_bytesPrimed = false;
+                setConnectionState(Vpn::ConnectionState::Disconnected);
+            });
     m_impl->initialize(nullptr, nullptr);
 }
 

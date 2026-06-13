@@ -85,6 +85,14 @@ public slots:
     void setBytesChanged(quint64 receivedBytes, quint64 sentBytes);
     void setConnectionState(Vpn::ConnectionState state);
 
+    // seed the cumulative counters without emitting a delta — used to absorb
+    // the first reading of an already-running tunnel (avoids a huge fake spike)
+    void primeByteCounters(quint64 receivedBytes, quint64 sentBytes)
+    {
+        m_receivedBytes = receivedBytes;
+        m_sentBytes = sentBytes;
+    }
+
 protected:
     void startTimeoutTimer();
     void stopTimeoutTimer();

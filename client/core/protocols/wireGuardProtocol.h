@@ -28,6 +28,7 @@ public:
 private:
 
     QScopedPointer<ControllerImpl> m_impl;
+    bool m_bytesPrimed = false;
 };
 
 #endif // WIREGUARDPROTOCOL_H
