@@ -1299,6 +1299,38 @@ Popup {
 
                     SectionTitle { text: qsTr("ABOUT") }
 
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        spacing: 12
+
+                        Image {
+                            Layout.preferredWidth: 48
+                            Layout.preferredHeight: 48
+                            source: "qrc:/images/devkz-emblem.png"
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            Text {
+                                text: "DEVKZ VPN"
+                                color: AmneziaStyle.color.paleGray
+                                font.pixelSize: 17
+                                font.weight: 700
+                            }
+
+                            Text {
+                                text: "vpn.devkz.ru"
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 12
+                            }
+                        }
+                    }
+
                     SettingsCard {
                         RowLayout {
                             Layout.fillWidth: true

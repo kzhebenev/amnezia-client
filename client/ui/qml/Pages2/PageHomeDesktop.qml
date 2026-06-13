@@ -243,6 +243,7 @@ PageType {
         property string text
         property var clickedFunc
         property bool isEnabled: true
+        property bool destructive: false
 
         width: smallButtonText.implicitWidth + 24
         height: 32
@@ -250,14 +251,14 @@ PageType {
         color: smallButtonMouseArea.containsMouse && isEnabled ? AmneziaStyle.color.translucentWhite
                                                                : AmneziaStyle.color.transparent
         border.width: 1
-        border.color: AmneziaStyle.color.charcoalGray
+        border.color: destructive ? Qt.alpha(root.macRed, 0.6) : AmneziaStyle.color.charcoalGray
         opacity: isEnabled ? 1.0 : 0.4
 
         Text {
             id: smallButtonText
             anchors.centerIn: parent
             text: smallButtonRoot.text
-            color: AmneziaStyle.color.paleGray
+            color: smallButtonRoot.destructive ? root.macRed : AmneziaStyle.color.paleGray
             font.pixelSize: 12
         }
 
@@ -676,7 +677,16 @@ PageType {
                         }
                     }
 
+                    // Cancel an in-progress connection attempt (so you can switch servers)
                     SmallButton {
+                        visible: ConnectionController.isConnectionInProgress
+                        text: qsTr("Cancel")
+                        destructive: true
+                        clickedFunc: function() { ConnectionController.closeConnection() }
+                    }
+
+                    SmallButton {
+                        visible: !ConnectionController.isConnectionInProgress
                         text: DiagnosticsController.isCheckInProgress ? qsTr("Checking…") : qsTr("Check")
                         isEnabled: !DiagnosticsController.isCheckInProgress
                         clickedFunc: function() { root.runCheck() }

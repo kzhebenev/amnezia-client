@@ -36,7 +36,7 @@ void DiagnosticsController::endStep()
     --m_pendingSteps;
     if (m_pendingSteps <= 0) {
         m_pendingSteps = 0;
-        log(tr("Check finished"));
+        log(tr("Check complete"));
         log("");
         emit checkCompleted(m_failedStage.isEmpty(), m_failedStage);
     }
@@ -51,16 +51,16 @@ void DiagnosticsController::startCheck(const QString &hostName, const QString &p
     }
 
     m_failedStage.clear();
-    log(tr("Checking endpoint %1:%2").arg(hostName, port));
+    log(tr("Checking server %1:%2").arg(hostName, port));
 
     const bool isIpLiteral = !QHostAddress(hostName).isNull();
     if (isIpLiteral) {
-        log(tr("Endpoint is an IP address, no DNS resolution required"));
+        log(tr("Server address is an IP, no DNS lookup needed"));
     } else {
         beginStep();
         QHostInfo::lookupHost(hostName, this, [this](const QHostInfo &info) {
             if (info.error() != QHostInfo::NoError) {
-                log(tr("DNS resolution failed: %1").arg(info.errorString()));
+                log(tr("Could not find the server address: %1").arg(info.errorString()));
                 m_failedStage = "dns";
             } else {
                 QStringList addresses;
@@ -68,7 +68,7 @@ void DiagnosticsController::startCheck(const QString &hostName, const QString &p
                 for (const QHostAddress &address : hostAddresses) {
                     addresses.append(address.toString());
                 }
-                log(tr("DNS resolved: %1").arg(addresses.join(", ")));
+                log(tr("Server address found: %1").arg(addresses.join(", ")));
             }
             endStep();
         });
@@ -77,7 +77,7 @@ void DiagnosticsController::startCheck(const QString &hostName, const QString &p
     if (transportProto.compare("tcp", Qt::CaseInsensitive) == 0) {
         checkTcpReachability(hostName, port.toUShort());
     } else {
-        log(tr("Transport protocol is UDP — port reachability probe is not applicable"));
+        log(tr("Server works over UDP — the port is checked when you connect"));
     }
 
     fetchExternalIp(hostName, isVpnActive);
@@ -95,7 +95,7 @@ void DiagnosticsController::checkTcpReachability(const QString &hostName, quint1
     timeoutTimer->setSingleShot(true);
 
     connect(socket, &QTcpSocket::connected, this, [this, socket, elapsed]() {
-        log(tr("TCP port is reachable, connect took %1 ms").arg(elapsed->elapsed()));
+        log(tr("Server responds (%1 ms)").arg(elapsed->elapsed()));
         socket->abort();
         socket->deleteLater();
         delete elapsed;
@@ -103,7 +103,7 @@ void DiagnosticsController::checkTcpReachability(const QString &hostName, quint1
     });
 
     connect(socket, &QTcpSocket::errorOccurred, this, [this, socket, elapsed](QAbstractSocket::SocketError) {
-        log(tr("TCP connection failed: %1").arg(socket->errorString()));
+        log(tr("Server is not responding: %1").arg(socket->errorString()));
         m_failedStage = "connect";
         socket->deleteLater();
         delete elapsed;
@@ -129,16 +129,16 @@ void DiagnosticsController::fetchExternalIp(const QString &serverHostName, bool 
     QNetworkReply *reply = m_networkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply, serverHostName, isVpnActive]() {
         if (reply->error() != QNetworkReply::NoError) {
-            log(tr("Failed to get external IP: %1").arg(reply->errorString()));
+            log(tr("Could not determine your external IP: %1").arg(reply->errorString()));
         } else {
             const QString externalIp = QString::fromUtf8(reply->readAll()).trimmed();
-            log(tr("External IP: %1").arg(externalIp));
+            log(tr("Your external IP: %1").arg(externalIp));
             if (externalIp == serverHostName) {
-                log(tr("External IP matches this server — traffic goes through it"));
+                log(tr("Your traffic goes through this server"));
             } else if (isVpnActive) {
-                log(tr("VPN is active, but traffic exits through a different endpoint (another profile or a via-route)"));
+                log(tr("VPN is on, but traffic exits through a different server (another profile or route)"));
             } else {
-                log(tr("VPN is not connected — this is your direct provider IP"));
+                log(tr("VPN is off — this is your normal IP from the provider"));
             }
         }
         reply->deleteLater();
