@@ -5629,6 +5629,10 @@ FileZilla или другие SFTP-клиенты, а также смонтир�
         <source>Traffic</source>
         <translation>Трафик</translation>
     </message>
+    <message>
+        <source>Log</source>
+        <translation>Журнал</translation>
+    </message>
 </context>
 <context>
     <name>DesktopSettingsModal</name>

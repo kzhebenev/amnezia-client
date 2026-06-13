@@ -31,6 +31,9 @@ PageType {
     property string lastLoggedState: ""
     property var subscriptionStatuses: ({})
 
+    // bottom panel tab: 0 = log, 1 = traffic graph
+    property int bottomTab: 0
+
     // rolling traffic-speed history for the live graph (per-second deltas)
     property int speedHistorySize: 60
     property var rxHistory: []
@@ -996,122 +999,86 @@ PageType {
                     }
                 }
 
-                // Live traffic graph (only while the active connection is up)
+                // Bottom panel: tabs for Log / Traffic
                 Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 110
-                    radius: 10
-                    color: AmneziaStyle.color.barelyTranslucentWhite
-                    visible: root.selectedInfo.isDefault === true && ConnectionController.isConnected
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 6
-
-                        RowLayout {
-                            Layout.fillWidth: true
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: qsTr("Traffic")
-                                color: AmneziaStyle.color.mutedGray
-                                font.pixelSize: 11
-                                font.weight: 600
-                            }
-
-                            Text {
-                                text: "↓ " + root.speedText(root.lastRxSpeed)
-                                color: root.macGreen
-                                font.pixelSize: 12
-                                font.weight: 600
-                            }
-
-                            Text {
-                                Layout.leftMargin: 12
-                                text: "↑ " + root.speedText(root.lastTxSpeed)
-                                color: "#0A84FF"
-                                font.pixelSize: 12
-                                font.weight: 600
-                            }
-                        }
-
-                        Canvas {
-                            id: trafficCanvas
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-
-                            property var rx: root.rxHistory
-                            property var tx: root.txHistory
-                            onRxChanged: requestPaint()
-
-                            onPaint: {
-                                var ctx = getContext("2d")
-                                ctx.reset()
-                                var w = width, h = height
-                                var n = root.speedHistorySize
-                                var rxArr = root.rxHistory, txArr = root.txHistory
-                                if (rxArr.length < 2) {
-                                    return
-                                }
-                                // shared scale across rx+tx, min ceiling so idle looks flat
-                                var peak = 1
-                                for (var i = 0; i < rxArr.length; ++i) {
-                                    peak = Math.max(peak, rxArr[i], txArr[i])
-                                }
-                                peak *= 1.2
-
-                                function plot(arr, stroke, fill) {
-                                    var step = w / (n - 1)
-                                    var x0 = w - (arr.length - 1) * step
-                                    ctx.beginPath()
-                                    for (var i = 0; i < arr.length; ++i) {
-                                        var x = x0 + i * step
-                                        var y = h - (arr[i] / peak) * (h - 4) - 2
-                                        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
-                                    }
-                                    ctx.strokeStyle = stroke
-                                    ctx.lineWidth = 1.5
-                                    ctx.stroke()
-                                    // area fill
-                                    ctx.lineTo(x0 + (arr.length - 1) * step, h)
-                                    ctx.lineTo(x0, h)
-                                    ctx.closePath()
-                                    ctx.fillStyle = fill
-                                    ctx.fill()
-                                }
-
-                                plot(txArr, "#0A84FF", "rgba(10,132,255,0.10)")
-                                plot(rxArr, root.macGreen, "rgba(50,215,75,0.12)")
-                            }
-                        }
-                    }
-                }
-
-                // Check log
-                Rectangle {
+                    id: bottomPanel
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 10
                     color: AmneziaStyle.color.barelyTranslucentWhite
 
+                    // traffic tab only makes sense for the live connection
+                    readonly property bool trafficAvailable: root.selectedInfo.isDefault === true && ConnectionController.isConnected
+
+                    // fall back to the log tab if traffic becomes unavailable
+                    onTrafficAvailableChanged: if (!trafficAvailable && root.bottomTab === 1) root.bottomTab = 0
+
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 12
-                        spacing: 6
+                        spacing: 8
 
+                        // tab bar
                         RowLayout {
                             Layout.fillWidth: true
+                            spacing: 16
 
+                            component TabButton: Text {
+                                property bool active: false
+                                property var clickedFunc
+                                color: active ? AmneziaStyle.color.paleGray
+                                              : (tabBtnMouse.containsMouse ? AmneziaStyle.color.paleGray
+                                                                          : AmneziaStyle.color.mutedGray)
+                                font.pixelSize: 12
+                                font.weight: active ? 700 : 400
+
+                                Rectangle {
+                                    anchors.top: parent.bottom
+                                    anchors.topMargin: 4
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    height: 2
+                                    radius: 1
+                                    visible: parent.active
+                                    color: AmneziaStyle.color.goldenApricot
+                                }
+
+                                MouseArea {
+                                    id: tabBtnMouse
+                                    anchors.fill: parent
+                                    anchors.margins: -4
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: if (parent.clickedFunc) parent.clickedFunc()
+                                }
+                            }
+
+                            TabButton {
+                                text: qsTr("Log")
+                                active: root.bottomTab === 0
+                                clickedFunc: function() { root.bottomTab = 0 }
+                            }
+
+                            TabButton {
+                                visible: bottomPanel.trafficAvailable
+                                text: qsTr("Traffic")
+                                active: root.bottomTab === 1
+                                clickedFunc: function() { root.bottomTab = 1 }
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            // current speeds (traffic tab) or copy/clear (log tab)
                             Text {
-                                Layout.fillWidth: true
-                                text: qsTr("Connection log")
-                                color: AmneziaStyle.color.mutedGray
-                                font.pixelSize: 11
+                                visible: root.bottomTab === 1
+                                text: "↓ " + root.speedText(root.lastRxSpeed) + "   ↑ " + root.speedText(root.lastTxSpeed)
+                                color: AmneziaStyle.color.lightGray
+                                font.pixelSize: 12
                                 font.weight: 600
                             }
 
                             Text {
+                                visible: root.bottomTab === 0
                                 text: qsTr("Copy")
                                 color: copyMouseArea.containsMouse ? AmneziaStyle.color.paleGray
                                                                    : AmneziaStyle.color.mutedGray
@@ -1120,6 +1087,7 @@ PageType {
                                 MouseArea {
                                     id: copyMouseArea
                                     anchors.fill: parent
+                                    anchors.margins: -4
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
@@ -1130,6 +1098,7 @@ PageType {
                             }
 
                             Text {
+                                visible: root.bottomTab === 0
                                 Layout.leftMargin: 12
                                 text: qsTr("Clear")
                                 color: clearMouseArea.containsMouse ? AmneziaStyle.color.paleGray
@@ -1139,6 +1108,7 @@ PageType {
                                 MouseArea {
                                     id: clearMouseArea
                                     anchors.fill: parent
+                                    anchors.margins: -4
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
@@ -1151,21 +1121,75 @@ PageType {
                             }
                         }
 
-                        ScrollView {
+                        // tab content
+                        StackLayout {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            clip: true
+                            currentIndex: root.bottomTab
 
-                            TextArea {
-                                id: checkLogArea
+                            // [0] connection log
+                            ScrollView {
+                                clip: true
 
-                                readOnly: true
-                                wrapMode: TextEdit.Wrap
-                                color: AmneziaStyle.color.lightGray
-                                font.family: "Menlo"
-                                font.pixelSize: 11
-                                selectByMouse: true
-                                background: Rectangle { color: AmneziaStyle.color.transparent }
+                                TextArea {
+                                    id: checkLogArea
+
+                                    readOnly: true
+                                    wrapMode: TextEdit.Wrap
+                                    color: AmneziaStyle.color.lightGray
+                                    font.family: "Menlo"
+                                    font.pixelSize: 11
+                                    selectByMouse: true
+                                    background: Rectangle { color: AmneziaStyle.color.transparent }
+                                }
+                            }
+
+                            // [1] traffic graph
+                            Canvas {
+                                id: trafficCanvas
+
+                                property var rx: root.rxHistory
+                                onRxChanged: requestPaint()
+                                onWidthChanged: requestPaint()
+                                onHeightChanged: requestPaint()
+
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    var w = width, h = height
+                                    var n = root.speedHistorySize
+                                    var rxArr = root.rxHistory, txArr = root.txHistory
+                                    if (rxArr.length < 2) {
+                                        return
+                                    }
+                                    var peak = 1
+                                    for (var i = 0; i < rxArr.length; ++i) {
+                                        peak = Math.max(peak, rxArr[i], txArr[i])
+                                    }
+                                    peak *= 1.2
+
+                                    function plot(arr, stroke, fill) {
+                                        var step = w / (n - 1)
+                                        var x0 = w - (arr.length - 1) * step
+                                        ctx.beginPath()
+                                        for (var i = 0; i < arr.length; ++i) {
+                                            var x = x0 + i * step
+                                            var y = h - (arr[i] / peak) * (h - 4) - 2
+                                            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+                                        }
+                                        ctx.strokeStyle = stroke
+                                        ctx.lineWidth = 1.5
+                                        ctx.stroke()
+                                        ctx.lineTo(x0 + (arr.length - 1) * step, h)
+                                        ctx.lineTo(x0, h)
+                                        ctx.closePath()
+                                        ctx.fillStyle = fill
+                                        ctx.fill()
+                                    }
+
+                                    plot(txArr, "#0A84FF", "rgba(10,132,255,0.10)")
+                                    plot(rxArr, root.macGreen, "rgba(50,215,75,0.12)")
+                                }
                             }
                         }
                     }
