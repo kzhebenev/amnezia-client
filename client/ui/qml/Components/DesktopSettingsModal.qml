@@ -1319,7 +1319,7 @@ Popup {
 
                         Text {
                             Layout.fillWidth: true
-                            text: qsTr("This is a fork of AmneziaVPN with a desktop redesign and vpn.devkz.ru integration. Based on the open-source AmneziaVPN client (GPL-3.0).")
+                            text: qsTr("DEVKZ VPN — by the devkz team and Claude AI, built on a fork of the open-source AmneziaVPN client (GPL-3.0), with a desktop redesign and vpn.devkz.ru integration.")
                             color: AmneziaStyle.color.mutedGray
                             font.pixelSize: 11
                             wrapMode: Text.WordWrap

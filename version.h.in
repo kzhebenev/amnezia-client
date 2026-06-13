@@ -13,4 +13,10 @@
 #define SERVICE_NAME        "AmneziaVPN-service"
 #define ORGANIZATION_NAME   "AmneziaVPN.ORG"
 
+// User-facing brand name of the fork. Kept separate from APPLICATION_NAME so
+// the QSettings/keychain storage path (tied to APPLICATION_NAME) stays stable
+// and existing profiles are preserved. A full org/app rename is a later
+// release step that requires data migration.
+#define DISPLAY_NAME        "DEVKZ VPN"
+
 #endif  // VERSION_H
