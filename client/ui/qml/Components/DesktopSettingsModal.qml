@@ -1307,7 +1307,7 @@ Popup {
                         Image {
                             Layout.preferredWidth: 48
                             Layout.preferredHeight: 48
-                            source: "qrc:/images/devkz-emblem.png"
+                            source: "qrc:/images/devkz-emblem.svg"
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                         }

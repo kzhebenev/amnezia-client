@@ -4,7 +4,8 @@
     </qresource>
     <qresource prefix="/images">
         <file>amneziaBigLogo.png</file>
-        <file>devkz-emblem.png</file>
+        <file>devkz-emblem.svg</file>
+        <file>devkz-logo.svg</file>
         <file>AmneziaVPN.png</file>
         <file>controls/alert-circle.svg</file>
         <file>controls/amnezia.svg</file>

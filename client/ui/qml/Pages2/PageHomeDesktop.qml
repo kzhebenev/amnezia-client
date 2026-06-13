@@ -394,7 +394,7 @@ PageType {
                     Image {
                         Layout.preferredWidth: 22
                         Layout.preferredHeight: 22
-                        source: "qrc:/images/devkz-emblem.png"
+                        source: "qrc:/images/devkz-emblem.svg"
                         fillMode: Image.PreserveAspectFit
                         smooth: true
                     }
