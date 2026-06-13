@@ -410,17 +410,16 @@ PageType {
                             anchors.rightMargin: 18
                             spacing: 8
 
+                            // health dot: red = offline, otherwise neutral grey.
+                            // "connected" is shown by the chip on the right, not by colour.
                             Rectangle {
                                 width: 8
                                 height: 8
                                 radius: 4
                                 color: {
-                                    if (isDefault && ConnectionController.isConnected) {
-                                        return root.macGreen
-                                    }
                                     var status = root.subscriptionStatuses[serverId]
-                                    if (status !== undefined) {
-                                        return status.alive ? Qt.alpha(root.macGreen, 0.55) : root.macRed
+                                    if (status !== undefined && !status.alive) {
+                                        return root.macRed
                                     }
                                     return AmneziaStyle.color.charcoalGray
                                 }
@@ -457,6 +456,27 @@ PageType {
                                     }
                                     font.pixelSize: 11
                                     elide: Text.ElideRight
+                                }
+                            }
+
+                            // green "Connected" chip — the unambiguous active-connection marker
+                            Rectangle {
+                                Layout.alignment: Qt.AlignVCenter
+                                visible: isActiveConnection
+                                implicitWidth: connectedChipText.implicitWidth + 16
+                                implicitHeight: 18
+                                radius: 9
+                                color: Qt.alpha(root.macGreen, 0.18)
+                                border.width: 1
+                                border.color: Qt.alpha(root.macGreen, 0.5)
+
+                                Text {
+                                    id: connectedChipText
+                                    anchors.centerIn: parent
+                                    text: qsTr("ON")
+                                    color: root.macGreen
+                                    font.pixelSize: 10
+                                    font.weight: 700
                                 }
                             }
                         }
