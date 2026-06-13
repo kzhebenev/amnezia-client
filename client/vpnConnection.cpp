@@ -515,12 +515,20 @@ QString VpnConnection::bytesPerSecToText(quint64 bytes)
 }
 
 void VpnConnection::reconnectToVpn() {
-    if (m_vpnProtocol.isNull())
+    // Hold a strong reference for the whole call: this is a queued slot fired by
+    // daemon signals (networkChanged / wakeup) and m_vpnProtocol may be reset
+    // from elsewhere meanwhile — without this the stop()/start() below could
+    // dereference a freed protocol (observed crash on network change).
+    QSharedPointer<VpnProtocol> protocol = m_vpnProtocol;
+    if (protocol.isNull())
         return;
 
+    // The Connected guard also prevents re-entrancy: after the state flips to
+    // Reconnecting a second queued signal returns here.
     if (m_connectionState != Vpn::ConnectionState::Connected) {
-        qWarning() << QString("Reconnect triggered on %1 during inappropriate state: %2; ignoring slot")
-                              .arg(QMetaEnum::fromType<Vpn::ConnectionState>().valueToKey(m_connectionState));
+        const char *stateName = QMetaEnum::fromType<Vpn::ConnectionState>().valueToKey(m_connectionState);
+        qWarning() << "Reconnect triggered during inappropriate state:"
+                   << (stateName ? stateName : "unknown") << "; ignoring slot";
         return;
     }
 
@@ -528,8 +536,8 @@ void VpnConnection::reconnectToVpn() {
 
     setConnectionState(Vpn::ConnectionState::Reconnecting);
 
-    m_vpnProtocol->stop();
-    if (ErrorCode err = m_vpnProtocol->start(); err != ErrorCode::NoError) {
+    protocol->stop();
+    if (ErrorCode err = protocol->start(); err != ErrorCode::NoError) {
         setConnectionState(Vpn::ConnectionState::Error);
         emit vpnProtocolError(err);
     }
