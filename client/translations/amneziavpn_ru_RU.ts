@@ -5625,6 +5625,10 @@ FileZilla или другие SFTP-клиенты, а также смонтир�
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
+    <message>
+        <source>Traffic</source>
+        <translation>Трафик</translation>
+    </message>
 </context>
 <context>
     <name>DesktopSettingsModal</name>

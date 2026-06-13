@@ -44,6 +44,7 @@ public slots:
 
 signals:
     void connectionStateChanged();
+    void bytesChanged(quint64 receivedBytes, quint64 sentBytes);
 
     void connectionErrorOccurred(ErrorCode errorCode);
 

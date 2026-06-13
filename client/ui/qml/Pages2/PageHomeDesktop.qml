@@ -31,6 +31,34 @@ PageType {
     property string lastLoggedState: ""
     property var subscriptionStatuses: ({})
 
+    // rolling traffic-speed history for the live graph (per-second deltas)
+    property int speedHistorySize: 60
+    property var rxHistory: []
+    property var txHistory: []
+    property real lastRxSpeed: 0
+    property real lastTxSpeed: 0
+
+    function pushSpeedSample(rx, tx) {
+        var rh = rxHistory.slice(); var th = txHistory.slice()
+        rh.push(rx); th.push(tx)
+        while (rh.length > speedHistorySize) { rh.shift(); th.shift() }
+        rxHistory = rh; txHistory = th
+        lastRxSpeed = rx; lastTxSpeed = tx
+    }
+
+    function resetSpeedHistory() {
+        rxHistory = []; txHistory = []
+        lastRxSpeed = 0; lastTxSpeed = 0
+    }
+
+    // bytes/s → human string (auto KB/s or Mbps)
+    function speedText(bytesPerSec) {
+        if (bytesPerSec >= 125000) { // ~1 Mbit/s
+            return (bytesPerSec * 8 / 1e6).toFixed(1) + " Mbps"
+        }
+        return Math.round(bytesPerSec / 1024) + " KB/s"
+    }
+
     // per-server diagnostics logs
     property var checkLogs: ({})
     property string checkingServerId: ""
@@ -176,6 +204,10 @@ PageType {
                                     Qt.formatTime(new Date(), "hh:mm:ss") + "  " + state)
             }
 
+            if (!ConnectionController.isConnected) {
+                root.resetSpeedHistory()
+            }
+
             if (root.pendingSwitch
                     && !ConnectionController.isConnected
                     && !ConnectionController.isConnectionInProgress) {
@@ -183,6 +215,11 @@ PageType {
                 ServersUiController.setDefaultServerAtIndex(root.selectedIndex)
                 ConnectionController.openConnection()
             }
+        }
+
+        function onBytesChanged(receivedBytes, sentBytes) {
+            // deltas arrive roughly once per second → treat as bytes/s
+            root.pushSpeedSample(receivedBytes, sentBytes)
         }
 
         function onConnectionErrorOccurred(errorCode) {
@@ -954,6 +991,98 @@ PageType {
                                                           })
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                // Live traffic graph (only while the active connection is up)
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 110
+                    radius: 10
+                    color: AmneziaStyle.color.barelyTranslucentWhite
+                    visible: root.selectedInfo.isDefault === true && ConnectionController.isConnected
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 6
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTr("Traffic")
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 11
+                                font.weight: 600
+                            }
+
+                            Text {
+                                text: "↓ " + root.speedText(root.lastRxSpeed)
+                                color: root.macGreen
+                                font.pixelSize: 12
+                                font.weight: 600
+                            }
+
+                            Text {
+                                Layout.leftMargin: 12
+                                text: "↑ " + root.speedText(root.lastTxSpeed)
+                                color: "#0A84FF"
+                                font.pixelSize: 12
+                                font.weight: 600
+                            }
+                        }
+
+                        Canvas {
+                            id: trafficCanvas
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            property var rx: root.rxHistory
+                            property var tx: root.txHistory
+                            onRxChanged: requestPaint()
+
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                var w = width, h = height
+                                var n = root.speedHistorySize
+                                var rxArr = root.rxHistory, txArr = root.txHistory
+                                if (rxArr.length < 2) {
+                                    return
+                                }
+                                // shared scale across rx+tx, min ceiling so idle looks flat
+                                var peak = 1
+                                for (var i = 0; i < rxArr.length; ++i) {
+                                    peak = Math.max(peak, rxArr[i], txArr[i])
+                                }
+                                peak *= 1.2
+
+                                function plot(arr, stroke, fill) {
+                                    var step = w / (n - 1)
+                                    var x0 = w - (arr.length - 1) * step
+                                    ctx.beginPath()
+                                    for (var i = 0; i < arr.length; ++i) {
+                                        var x = x0 + i * step
+                                        var y = h - (arr[i] / peak) * (h - 4) - 2
+                                        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+                                    }
+                                    ctx.strokeStyle = stroke
+                                    ctx.lineWidth = 1.5
+                                    ctx.stroke()
+                                    // area fill
+                                    ctx.lineTo(x0 + (arr.length - 1) * step, h)
+                                    ctx.lineTo(x0, h)
+                                    ctx.closePath()
+                                    ctx.fillStyle = fill
+                                    ctx.fill()
+                                }
+
+                                plot(txArr, "#0A84FF", "rgba(10,132,255,0.10)")
+                                plot(rxArr, root.macGreen, "rgba(50,215,75,0.12)")
                             }
                         }
                     }
