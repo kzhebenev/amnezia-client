@@ -1011,10 +1011,42 @@ Popup {
                                 }
 
                                 Text {
-                                    text: root.healthData.msk !== undefined
-                                          ? root.healthData.msk.addr + " → " + root.healthData.msk.active_exit
-                                          : ""
+                                    text: {
+                                        if (root.healthData.msk === undefined) {
+                                            return ""
+                                        }
+                                        var exit = root.healthData.msk.active_exit
+                                        return root.healthData.msk.addr + " → " + (exit ? exit : qsTr("RU (local)"))
+                                    }
                                     color: AmneziaStyle.color.paleGray
+                                    font.pixelSize: 12
+                                }
+                            }
+
+                            CardDivider {}
+
+                            RowLayout {
+                                Layout.fillWidth: true
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: qsTr("Checked")
+                                    color: AmneziaStyle.color.mutedGray
+                                    font.pixelSize: 12
+                                }
+
+                                Text {
+                                    text: {
+                                        if (root.healthData.checked_at === undefined) {
+                                            return ""
+                                        }
+                                        var secs = Math.max(0, Math.round((new Date() - new Date(root.healthData.checked_at)) / 1000))
+                                        if (secs < 60) {
+                                            return qsTr("%1 s ago").arg(secs)
+                                        }
+                                        return qsTr("%1 min ago").arg(Math.round(secs / 60))
+                                    }
+                                    color: AmneziaStyle.color.mutedGray
                                     font.pixelSize: 12
                                 }
                             }
@@ -1055,16 +1087,16 @@ Popup {
                                     }
 
                                     Text {
-                                        visible: modelData.active === true
-                                        text: qsTr("active")
-                                        color: AmneziaStyle.color.goldenApricot
+                                        visible: modelData.role !== undefined && modelData.role !== ""
+                                        text: modelData.role !== undefined ? modelData.role.replace("_", "-") : ""
+                                        color: AmneziaStyle.color.mutedGray
                                         font.pixelSize: 11
                                     }
 
                                     Text {
-                                        visible: modelData.always_on === true
-                                        text: qsTr("always-on")
-                                        color: AmneziaStyle.color.mutedGray
+                                        visible: modelData.active === true
+                                        text: qsTr("active")
+                                        color: AmneziaStyle.color.goldenApricot
                                         font.pixelSize: 11
                                     }
                                 }
@@ -1160,7 +1192,18 @@ Popup {
                                                    ? qsTr("connected · handshake %1 s ago").arg(modelData.last_handshake_seconds_ago)
                                                    : qsTr("not connected"))
                                                   + (modelData.transfer !== undefined && modelData.transfer !== null
+                                                     && modelData.transfer !== ""
                                                      ? "  ·  " + modelData.transfer : "")
+                                            color: AmneziaStyle.color.mutedGray
+                                            font.pixelSize: 11
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            visible: modelData.endpoint_ip !== undefined && modelData.endpoint_ip !== null
+                                            text: qsTr("from %1  ·  %2").arg(modelData.endpoint_ip !== null ? modelData.endpoint_ip : "")
+                                                                        .arg(modelData.address)
                                             color: AmneziaStyle.color.mutedGray
                                             font.pixelSize: 11
                                             elide: Text.ElideRight
