@@ -320,10 +320,34 @@ PageType {
                 anchors.fill: parent
                 spacing: 0
 
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    Layout.topMargin: 14
+                    Layout.bottomMargin: 10
+                    spacing: 8
+
+                    Image {
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        source: "qrc:/images/devkz-emblem.png"
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "DEVKZ VPN"
+                        color: AmneziaStyle.color.paleGray
+                        font.pixelSize: 14
+                        font.weight: 700
+                    }
+                }
+
                 Text {
                     Layout.fillWidth: true
                     Layout.leftMargin: 16
-                    Layout.topMargin: 14
                     Layout.bottomMargin: 6
 
                     text: qsTr("Connections")

@@ -53,9 +53,19 @@ PageType {
             width: Math.min(parent.width - 80, 420)
             spacing: 0
 
+            Image {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 96
+                Layout.preferredHeight: 96
+                source: "qrc:/images/devkz-emblem.png"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: qsTr("Welcome")
+                Layout.topMargin: 12
+                text: qsTr("DEVKZ VPN")
                 color: AmneziaStyle.color.paleGray
                 font.pixelSize: 28
                 font.weight: 700
