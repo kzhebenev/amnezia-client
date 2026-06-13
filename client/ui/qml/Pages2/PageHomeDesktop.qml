@@ -373,14 +373,35 @@ PageType {
                         width: serversListView.width
                         height: 40
 
+                        // true while this profile holds the active VPN connection
+                        property bool isActiveConnection: isDefault && ConnectionController.isConnected
+
                         Rectangle {
                             anchors.fill: parent
                             anchors.leftMargin: 8
                             anchors.rightMargin: 8
                             radius: 6
-                            color: index === root.selectedIndex ? AmneziaStyle.color.sheerWhite
-                                                                : (rowMouseArea.containsMouse ? AmneziaStyle.color.barelyTranslucentWhite
-                                                                                              : AmneziaStyle.color.transparent)
+                            color: {
+                                if (index === root.selectedIndex) {
+                                    return AmneziaStyle.color.sheerWhite
+                                }
+                                if (isActiveConnection) {
+                                    return Qt.alpha(root.macGreen, 0.10)
+                                }
+                                return rowMouseArea.containsMouse ? AmneziaStyle.color.barelyTranslucentWhite
+                                                                  : AmneziaStyle.color.transparent
+                            }
+
+                            // green accent bar marking the active connection
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 3
+                                height: parent.height - 12
+                                radius: 1.5
+                                visible: isActiveConnection
+                                color: root.macGreen
+                            }
                         }
 
                         RowLayout {
@@ -414,6 +435,7 @@ PageType {
                                     text: name
                                     color: AmneziaStyle.color.paleGray
                                     font.pixelSize: 13
+                                    font.weight: isActiveConnection ? 700 : 400
                                     elide: Text.ElideRight
                                 }
 
