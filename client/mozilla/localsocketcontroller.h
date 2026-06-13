@@ -64,6 +64,8 @@ class LocalSocketController final : public ControllerImpl {
 
   QTimer m_initializingTimer;
   uint32_t m_initializingRetry = 0;
+
+  QTimer m_statusPollTimer;  // periodic checkStatus() while connected (live traffic stats)
 };
 
 #endif  // LOCALSOCKETCONTROLLER_H

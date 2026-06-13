@@ -55,6 +55,11 @@ LocalSocketController::LocalSocketController() {
   m_initializingTimer.setSingleShot(true);
   connect(&m_initializingTimer, &QTimer::timeout, this,
           &LocalSocketController::initializeInternal);
+
+  // poll the daemon once a second while connected so traffic counters update
+  m_statusPollTimer.setInterval(1000);
+  connect(&m_statusPollTimer, &QTimer::timeout, this,
+          &LocalSocketController::checkStatus);
 }
 
 LocalSocketController::~LocalSocketController() {
@@ -84,6 +89,7 @@ void LocalSocketController::disconnectInternal() {
   m_daemonState = eReady;
   m_initializingRetry = 0;
   m_initializingTimer.stop();
+  m_statusPollTimer.stop();
   emit disconnected();
 }
 
@@ -487,6 +493,7 @@ void LocalSocketController::parseCommand(const QByteArray& command) {
                    << pubkey.toString();
 
     checkStatus();
+    m_statusPollTimer.start();
 
     emit statusUpdated("", m_deviceIpv4, 0, 0);
 
