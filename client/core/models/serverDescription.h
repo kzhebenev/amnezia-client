@@ -22,6 +22,7 @@ struct ServerDescription
     QString serverName;
     QString baseDescription;
     QString hostName;
+    QString subscriptionCountry;  // ISO country code from a vpn.devkz.ru subscription profile
 
     int configVersion = 0;
 

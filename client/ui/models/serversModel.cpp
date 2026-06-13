@@ -81,6 +81,8 @@ QVariant ServersModel::data(const QModelIndex &index, int role) const
         return row.isSubscriptionExpired;
     case IsSubscriptionExpiringSoonRole:
         return row.isSubscriptionExpiringSoon;
+    case SubscriptionCountryRole:
+        return row.subscriptionCountry;
     }
 
     return QVariant();
@@ -141,6 +143,7 @@ QHash<int, QByteArray> ServersModel::roleNames() const
     roles[IsServerFromGatewayApiRole] = "isServerFromGatewayApi";
     roles[IsSubscriptionExpiredRole] = "isSubscriptionExpired";
     roles[IsSubscriptionExpiringSoonRole] = "isSubscriptionExpiringSoon";
+    roles[SubscriptionCountryRole] = "subscriptionCountry";
 
     return roles;
 }

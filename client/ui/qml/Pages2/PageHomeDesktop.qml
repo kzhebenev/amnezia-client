@@ -70,6 +70,16 @@ PageType {
         return selectedInfo.serverId !== undefined ? selectedInfo.serverId : ""
     }
 
+    // ISO country code → regional-indicator flag emoji ("RU" → 🇷🇺)
+    function countryFlag(code) {
+        if (!code || code.length < 2) {
+            return ""
+        }
+        var cc = code.toUpperCase()
+        return String.fromCodePoint(0x1F1E6 + cc.charCodeAt(0) - 65)
+             + String.fromCodePoint(0x1F1E6 + cc.charCodeAt(1) - 65)
+    }
+
     // subscription health → "ok" | "new" (loaded, never connected yet) |
     // "offline" (was reachable, now timed out) | "unknown" (no status)
     function statusKind(serverId) {
@@ -488,7 +498,7 @@ PageType {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: name
+                                    text: (subscriptionCountry ? root.countryFlag(subscriptionCountry) + "  " : "") + name
                                     color: AmneziaStyle.color.paleGray
                                     font.pixelSize: 13
                                     font.weight: isActiveConnection ? 700 : 400
@@ -1159,6 +1169,18 @@ PageType {
                                     var w = width, h = height
                                     var n = root.speedHistorySize
                                     var rxArr = root.rxHistory, txArr = root.txHistory
+
+                                    // horizontal grid (3 lines)
+                                    ctx.strokeStyle = "rgba(255,255,255,0.06)"
+                                    ctx.lineWidth = 1
+                                    for (var g = 1; g <= 3; ++g) {
+                                        var gy = h * g / 4
+                                        ctx.beginPath()
+                                        ctx.moveTo(0, gy)
+                                        ctx.lineTo(w, gy)
+                                        ctx.stroke()
+                                    }
+
                                     if (rxArr.length < 2) {
                                         return
                                     }
@@ -1189,6 +1211,12 @@ PageType {
 
                                     plot(txArr, "#0A84FF", "rgba(10,132,255,0.10)")
                                     plot(rxArr, root.macGreen, "rgba(50,215,75,0.12)")
+
+                                    // peak label (top-left)
+                                    ctx.fillStyle = "rgba(193,194,197,0.7)"
+                                    ctx.font = "10px Menlo"
+                                    ctx.textBaseline = "top"
+                                    ctx.fillText(qsTr("peak ") + root.speedText(peak / 1.2), 4, 3)
                                 }
                             }
                         }

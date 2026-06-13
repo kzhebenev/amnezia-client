@@ -195,6 +195,8 @@ QVector<ServerDescription> ServersController::buildServerDescriptions(bool isAmn
         }
 
         d.serverId = id;
+        d.subscriptionCountry =
+                m_serversRepository->serverJson(id).value("subscription").toObject().value("country").toString();
         out.append(d);
     }
     return out;

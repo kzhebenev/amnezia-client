@@ -683,6 +683,7 @@ QJsonObject ImportController::buildServerConfigFromSubscriptionProfile(const QJs
     subscriptionInfo["profile"] = profileKey;
     subscriptionInfo["profileName"] = profileName;
     subscriptionInfo["revision"] = profile.value("revision").toInt();
+    subscriptionInfo["country"] = profile.value("country_code").toString();
     serverConfig["subscription"] = subscriptionInfo;
 
     return serverConfig;

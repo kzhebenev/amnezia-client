@@ -5633,6 +5633,10 @@ FileZilla или другие SFTP-клиенты, а также смонтир�
         <source>Log</source>
         <translation>Журнал</translation>
     </message>
+    <message>
+        <source>peak </source>
+        <translation>пик </translation>
+    </message>
 </context>
 <context>
     <name>DesktopSettingsModal</name>
