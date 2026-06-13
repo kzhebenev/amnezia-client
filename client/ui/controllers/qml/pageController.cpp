@@ -122,7 +122,8 @@ void PageController::updateNavigationBarColor(const int color)
 
 void PageController::showOnStartup()
 {
-    if (!m_settingsController->isStartMinimizedEnabled()) {
+    // AMNEZIA_FORCE_SHOW=1 bypasses "start minimized" (useful for development runs)
+    if (!m_settingsController->isStartMinimizedEnabled() || qEnvironmentVariableIsSet("AMNEZIA_FORCE_SHOW")) {
         emit raiseMainWindow();
     } else {
 #if defined(Q_OS_WIN) || (defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID))

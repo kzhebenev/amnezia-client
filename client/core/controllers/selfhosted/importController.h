@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QByteArray>
+#include <QHash>
 #include <QMap>
 #include <QUrl>
 #include <QVariantMap>
@@ -67,6 +68,9 @@ public:
     ErrorCode refreshSubscriptions(int &updatedCount);
     bool hasSubscriptions() const;
     void requestSubscriptionStatuses();
+    void backgroundRefreshSubscriptions();
+    void requestSubscriptionHealth();
+    void sendSubscriptionFeedback(const QString &serverId, bool ok, const QString &stage);
 
     void startDecodingQr();
     QrParseResult parseQrCodeChunk(const QString &code);
@@ -82,6 +86,7 @@ signals:
     void importErrorOccurred(ErrorCode errorCode, bool goToPageHome);
     void restoreAppConfig(const QByteArray &data);
     void subscriptionStatusesUpdated(const QVariantMap &statuses);
+    void subscriptionHealthUpdated(const QVariantMap &health);
 
 private:
     struct SubscriptionEndpoint
@@ -115,6 +120,7 @@ private:
     SecureAppSettingsRepository* m_appSettingsRepository;
 
     QNetworkAccessManager* m_statusNetworkManager = nullptr;
+    QHash<QString, QByteArray> m_subscriptionEtags;
 
     QMap<int, QByteArray> m_qrCodeChunks;
     bool m_isQrCodeProcessed = false;

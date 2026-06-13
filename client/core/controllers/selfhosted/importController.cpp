@@ -1,6 +1,7 @@
 #include "importController.h"
 
 #include <QDataStream>
+#include <QDateTime>
 #include <QDebug>
 #include <QEventLoop>
 #include <QJsonArray>
@@ -853,6 +854,115 @@ void ImportController::requestSubscriptionStatuses()
             }
         });
     }
+}
+
+// Re-fetches every subscription with If-None-Match; applies changes only
+// when the panel reports a new revision (HTTP 200 instead of 304).
+void ImportController::backgroundRefreshSubscriptions()
+{
+    const QList<SubscriptionEndpoint> endpoints = storedSubscriptionEndpoints();
+    if (endpoints.isEmpty()) {
+        return;
+    }
+
+    if (!m_statusNetworkManager) {
+        m_statusNetworkManager = new QNetworkAccessManager(this);
+    }
+
+    for (const SubscriptionEndpoint &endpoint : endpoints) {
+        QNetworkRequest request(QUrl(endpoint.baseUrl + "/api/v1/sub"));
+        request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+        request.setRawHeader("Accept", "application/json");
+        request.setRawHeader("Authorization", "Bearer " + endpoint.token.toUtf8());
+        request.setTransferTimeout(15000);
+
+        const QByteArray etag = m_subscriptionEtags.value(endpoint.cacheKey());
+        if (!etag.isEmpty()) {
+            request.setRawHeader("If-None-Match", etag);
+        }
+
+        QNetworkReply *reply = m_statusNetworkManager->get(request);
+        connect(reply, &QNetworkReply::finished, this, [this, reply, endpoint]() {
+            const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            if (httpStatus == 200) {
+                m_subscriptionEtags.insert(endpoint.cacheKey(), reply->rawHeader("ETag"));
+                const QJsonArray profiles =
+                        QJsonDocument::fromJson(reply->readAll()).object().value("profiles").toArray();
+                if (!profiles.isEmpty()) {
+                    int updatedCount = 0;
+                    refreshSubscriptionFromProfiles(endpoint, profiles, updatedCount);
+                    if (updatedCount > 0) {
+                        emit importFinished();
+                    }
+                }
+            }
+            reply->deleteLater();
+        });
+    }
+}
+
+void ImportController::requestSubscriptionHealth()
+{
+    const QList<SubscriptionEndpoint> endpoints = storedSubscriptionEndpoints();
+    if (endpoints.isEmpty()) {
+        emit subscriptionHealthUpdated({});
+        return;
+    }
+
+    if (!m_statusNetworkManager) {
+        m_statusNetworkManager = new QNetworkAccessManager(this);
+    }
+
+    const SubscriptionEndpoint endpoint = endpoints.first();
+    QNetworkRequest request(QUrl(endpoint.baseUrl + "/api/v1/health"));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setRawHeader("Accept", "application/json");
+    request.setRawHeader("Authorization", "Bearer " + endpoint.token.toUtf8());
+    request.setTransferTimeout(15000);
+
+    QNetworkReply *reply = m_statusNetworkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        QVariantMap health;
+        if (reply->error() == QNetworkReply::NoError) {
+            health = QJsonDocument::fromJson(reply->readAll()).object().toVariantMap();
+        }
+        reply->deleteLater();
+        emit subscriptionHealthUpdated(health);
+    });
+}
+
+// Fire-and-forget client report; silently skipped for non-subscription servers
+void ImportController::sendSubscriptionFeedback(const QString &serverId, bool ok, const QString &stage)
+{
+    const SubscriptionEndpoint endpoint = subscriptionEndpointForServer(serverId);
+    if (!endpoint.isValid()) {
+        return;
+    }
+
+    const QString profileId =
+            m_serversRepository->serverJson(serverId).value("subscription").toObject().value("profile").toString();
+    if (profileId.isEmpty()) {
+        return;
+    }
+
+    if (!m_statusNetworkManager) {
+        m_statusNetworkManager = new QNetworkAccessManager(this);
+    }
+
+    QNetworkRequest request(QUrl(endpoint.baseUrl + "/api/v1/feedback"));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Authorization", "Bearer " + endpoint.token.toUtf8());
+    request.setTransferTimeout(10000);
+
+    QJsonObject body;
+    body["id"] = profileId;
+    body["ok"] = ok;
+    body["stage"] = stage;
+    body["client_ts"] = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+
+    QNetworkReply *reply = m_statusNetworkManager->post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
 }
 
 QJsonObject ImportController::processNativeWireGuardConfig(const QJsonObject &config)

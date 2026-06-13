@@ -28,6 +28,9 @@ public slots:
     bool refreshSubscriptions();
     bool hasSubscriptions();
     void requestSubscriptionStatuses();
+    void backgroundRefreshSubscriptions();
+    void requestSubscriptionHealth();
+    void sendSubscriptionFeedback(const QString &serverId, bool ok, const QString &stage);
     QString getConfig();
     QString getConfigFileName();
     QString getMaliciousWarningText();
@@ -54,6 +57,7 @@ signals:
     void restoreAppConfig(const QByteArray &data);
     void importConfigChanged();
     void subscriptionStatusesUpdated(const QVariantMap &statuses);
+    void subscriptionHealthUpdated(const QVariantMap &health);
 
 private:
 #if defined Q_OS_ANDROID || defined Q_OS_IOS

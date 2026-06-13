@@ -38,6 +38,7 @@ void DiagnosticsController::endStep()
         m_pendingSteps = 0;
         log(tr("Check finished"));
         log("");
+        emit checkCompleted(m_failedStage.isEmpty(), m_failedStage);
     }
     emit checkStateChanged();
 }
@@ -49,6 +50,7 @@ void DiagnosticsController::startCheck(const QString &hostName, const QString &p
         return;
     }
 
+    m_failedStage.clear();
     log(tr("Checking endpoint %1:%2").arg(hostName, port));
 
     const bool isIpLiteral = !QHostAddress(hostName).isNull();
@@ -59,6 +61,7 @@ void DiagnosticsController::startCheck(const QString &hostName, const QString &p
         QHostInfo::lookupHost(hostName, this, [this](const QHostInfo &info) {
             if (info.error() != QHostInfo::NoError) {
                 log(tr("DNS resolution failed: %1").arg(info.errorString()));
+                m_failedStage = "dns";
             } else {
                 QStringList addresses;
                 const auto hostAddresses = info.addresses();
@@ -101,6 +104,7 @@ void DiagnosticsController::checkTcpReachability(const QString &hostName, quint1
 
     connect(socket, &QTcpSocket::errorOccurred, this, [this, socket, elapsed](QAbstractSocket::SocketError) {
         log(tr("TCP connection failed: %1").arg(socket->errorString()));
+        m_failedStage = "connect";
         socket->deleteLater();
         delete elapsed;
         endStep();

@@ -31,6 +31,8 @@ ImportUiController::ImportUiController(ImportController* importController, QObje
     connect(m_importController, &ImportController::restoreAppConfig, this, &ImportUiController::restoreAppConfig);
     connect(m_importController, &ImportController::subscriptionStatusesUpdated, this,
             &ImportUiController::subscriptionStatusesUpdated);
+    connect(m_importController, &ImportController::subscriptionHealthUpdated, this,
+            &ImportUiController::subscriptionHealthUpdated);
 }
 
 bool ImportUiController::extractConfigFromFile(const QString &fileName)
@@ -120,6 +122,21 @@ bool ImportUiController::hasSubscriptions()
 void ImportUiController::requestSubscriptionStatuses()
 {
     m_importController->requestSubscriptionStatuses();
+}
+
+void ImportUiController::backgroundRefreshSubscriptions()
+{
+    m_importController->backgroundRefreshSubscriptions();
+}
+
+void ImportUiController::requestSubscriptionHealth()
+{
+    m_importController->requestSubscriptionHealth();
+}
+
+void ImportUiController::sendSubscriptionFeedback(const QString &serverId, bool ok, const QString &stage)
+{
+    m_importController->sendSubscriptionFeedback(serverId, ok, stage);
 }
 
 bool ImportUiController::extractConfigFromQr(const QByteArray &data)

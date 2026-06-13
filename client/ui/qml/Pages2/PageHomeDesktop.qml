@@ -166,6 +166,7 @@ PageType {
         function onConnectionErrorOccurred(errorCode) {
             root.appendCheckLog(ServersUiController.defaultServerId,
                                 Qt.formatTime(new Date(), "hh:mm:ss") + "  " + qsTr("Connection error (code %1)").arg(errorCode))
+            ImportController.sendSubscriptionFeedback(ServersUiController.defaultServerId, false, "connect")
         }
     }
 
@@ -187,6 +188,23 @@ PageType {
         running: true
         triggeredOnStart: true
         onTriggered: ImportController.requestSubscriptionStatuses()
+    }
+
+    // background profile auto-update; the panel answers 304 while nothing changed
+    Timer {
+        interval: 600000
+        repeat: true
+        running: true
+        onTriggered: ImportController.backgroundRefreshSubscriptions()
+    }
+
+    Connections {
+        target: DiagnosticsController
+        function onCheckCompleted(ok, failedStage) {
+            if (!ok && root.checkingServerId !== "") {
+                ImportController.sendSubscriptionFeedback(root.checkingServerId, false, failedStage)
+            }
+        }
     }
 
     Connections {

@@ -21,6 +21,7 @@ public slots:
 signals:
     void logAppended(const QString &line);
     void checkStateChanged();
+    void checkCompleted(bool ok, const QString &failedStage);
 
 private:
     void log(const QString &line);
@@ -31,6 +32,7 @@ private:
 
     QNetworkAccessManager *m_networkManager;
     int m_pendingSteps = 0;
+    QString m_failedStage;
 };
 
 #endif // DIAGNOSTICSCONTROLLER_H

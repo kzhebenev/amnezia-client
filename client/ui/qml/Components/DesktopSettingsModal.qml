@@ -10,9 +10,11 @@ Popup {
     id: root
 
     readonly property color macRed: "#FF453A"
+    readonly property color macGreen2: "#32D74B"
 
     property int currentSection: 0
     property bool amneziaDnsEnabled: false
+    property var healthData: ({})
 
     parent: Overlay.overlay
     anchors.centerIn: parent
@@ -26,6 +28,14 @@ Popup {
         amneziaDnsEnabled = SettingsController.isAmneziaDnsEnabled()
         primaryDnsField.text = SettingsController.primaryDns
         secondaryDnsField.text = SettingsController.secondaryDns
+        ImportController.requestSubscriptionHealth()
+    }
+
+    Connections {
+        target: ImportController
+        function onSubscriptionHealthUpdated(health) {
+            root.healthData = health
+        }
     }
 
     Overlay.modal: Rectangle {
@@ -332,7 +342,7 @@ Popup {
                 }
 
                 Repeater {
-                    model: [qsTr("General"), qsTr("Connection"), qsTr("Split tunneling"), qsTr("Logging"), qsTr("Backup"), qsTr("About")]
+                    model: [qsTr("General"), qsTr("Connection"), qsTr("Split tunneling"), qsTr("Logging"), qsTr("Backup"), "vpn.devkz.ru", qsTr("About")]
 
                     delegate: Item {
                         required property int index
@@ -923,6 +933,319 @@ Popup {
                     }
 
                     Item { Layout.fillHeight: true }
+                }
+
+                // ============ vpn.devkz.ru health ============
+                ScrollView {
+                    id: healthScroll
+
+                    clip: true
+                    contentWidth: availableWidth
+
+                    ColumnLayout {
+                        width: healthScroll.availableWidth
+                        spacing: 12
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            SectionTitle {
+                                Layout.fillWidth: true
+                                text: "VPN.DEVKZ.RU"
+                            }
+
+                            MiniButton {
+                                text: qsTr("Refresh")
+                                clickedFunc: function() { ImportController.requestSubscriptionHealth() }
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: root.healthData.status === undefined
+                            text: ImportController.hasSubscriptions()
+                                  ? qsTr("Panel is unreachable or still loading…")
+                                  : qsTr("Add a vpn.devkz.ru subscription to see panel diagnostics")
+                            color: AmneziaStyle.color.mutedGray
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
+                        }
+
+                        SettingsCard {
+                            visible: root.healthData.status !== undefined
+
+                            RowLayout {
+                                Layout.fillWidth: true
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: qsTr("Panel status")
+                                    color: AmneziaStyle.color.paleGray
+                                    font.pixelSize: 13
+                                }
+
+                                Rectangle {
+                                    width: 8
+                                    height: 8
+                                    radius: 4
+                                    color: root.healthData.status === "healthy" ? root.macGreen2 : "#FFD60A"
+                                }
+
+                                Text {
+                                    text: root.healthData.status !== undefined ? root.healthData.status : ""
+                                    color: AmneziaStyle.color.paleGray
+                                    font.pixelSize: 13
+                                }
+                            }
+
+                            CardDivider {}
+
+                            RowLayout {
+                                Layout.fillWidth: true
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: qsTr("MSK hub · active exit")
+                                    color: AmneziaStyle.color.mutedGray
+                                    font.pixelSize: 12
+                                }
+
+                                Text {
+                                    text: root.healthData.msk !== undefined
+                                          ? root.healthData.msk.addr + " → " + root.healthData.msk.active_exit
+                                          : ""
+                                    color: AmneziaStyle.color.paleGray
+                                    font.pixelSize: 12
+                                }
+                            }
+                        }
+
+                        SettingsCard {
+                            visible: root.healthData.exits !== undefined && root.healthData.exits.length > 0
+
+                            Text {
+                                text: qsTr("Exits")
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 11
+                                font.weight: 600
+                            }
+
+                            Repeater {
+                                model: root.healthData.exits !== undefined ? root.healthData.exits : []
+
+                                delegate: RowLayout {
+                                    required property var modelData
+
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Rectangle {
+                                        width: 8
+                                        height: 8
+                                        radius: 4
+                                        color: modelData.alive ? root.macGreen2 : root.macRed
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.label + "  ·  " + modelData.addr
+                                        color: AmneziaStyle.color.paleGray
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        visible: modelData.active === true
+                                        text: qsTr("active")
+                                        color: AmneziaStyle.color.goldenApricot
+                                        font.pixelSize: 11
+                                    }
+
+                                    Text {
+                                        visible: modelData.always_on === true
+                                        text: qsTr("always-on")
+                                        color: AmneziaStyle.color.mutedGray
+                                        font.pixelSize: 11
+                                    }
+                                }
+                            }
+                        }
+
+                        SettingsCard {
+                            visible: root.healthData.gateways !== undefined && root.healthData.gateways.length > 0
+
+                            Text {
+                                text: qsTr("Gateways")
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 11
+                                font.weight: 600
+                            }
+
+                            Repeater {
+                                model: root.healthData.gateways !== undefined ? root.healthData.gateways : []
+
+                                delegate: RowLayout {
+                                    required property var modelData
+
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Rectangle {
+                                        width: 8
+                                        height: 8
+                                        radius: 4
+                                        color: modelData.alive ? root.macGreen2 : root.macRed
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.label + "  ·  " + modelData.addr + ":" + modelData.port
+                                        color: AmneziaStyle.color.paleGray
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        text: qsTr("s2s %1 s · %2 clients")
+                                              .arg(modelData.s2s_handshake_seconds_ago !== null ? modelData.s2s_handshake_seconds_ago : "—")
+                                              .arg(modelData.clients_count)
+                                        color: AmneziaStyle.color.mutedGray
+                                        font.pixelSize: 11
+                                    }
+                                }
+                            }
+                        }
+
+                        SettingsCard {
+                            visible: root.healthData.your_profiles !== undefined && root.healthData.your_profiles.length > 0
+
+                            Text {
+                                text: qsTr("Your profiles")
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 11
+                                font.weight: 600
+                            }
+
+                            Repeater {
+                                model: root.healthData.your_profiles !== undefined ? root.healthData.your_profiles : []
+
+                                delegate: RowLayout {
+                                    required property var modelData
+
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Rectangle {
+                                        width: 8
+                                        height: 8
+                                        radius: 4
+                                        color: modelData.connected ? root.macGreen2 : AmneziaStyle.color.charcoalGray
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 0
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.name + "  ·  " + modelData.via_label
+                                            color: AmneziaStyle.color.paleGray
+                                            font.pixelSize: 12
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: (modelData.connected
+                                                   ? qsTr("connected · handshake %1 s ago").arg(modelData.last_handshake_seconds_ago)
+                                                   : qsTr("not connected"))
+                                                  + (modelData.transfer !== undefined && modelData.transfer !== null
+                                                     ? "  ·  " + modelData.transfer : "")
+                                            color: AmneziaStyle.color.mutedGray
+                                            font.pixelSize: 11
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        SettingsCard {
+                            visible: root.healthData.route_presets !== undefined && root.healthData.route_presets.length > 0
+
+                            Text {
+                                text: qsTr("Route presets")
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 11
+                                font.weight: 600
+                            }
+
+                            Repeater {
+                                model: root.healthData.route_presets !== undefined ? root.healthData.route_presets : []
+
+                                delegate: RowLayout {
+                                    required property var modelData
+
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.label + "  →  " + modelData.exit
+                                        color: modelData.enabled ? AmneziaStyle.color.paleGray
+                                                                 : AmneziaStyle.color.mutedGray
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        text: modelData.enabled ? "✓" : "—"
+                                        color: modelData.enabled ? AmneziaStyle.color.goldenApricot
+                                                                 : AmneziaStyle.color.mutedGray
+                                        font.pixelSize: 12
+                                    }
+                                }
+                            }
+                        }
+
+                        SettingsCard {
+                            visible: root.healthData.issues !== undefined && root.healthData.issues.length > 0
+
+                            Text {
+                                text: qsTr("Issues")
+                                color: AmneziaStyle.color.mutedGray
+                                font.pixelSize: 11
+                                font.weight: 600
+                            }
+
+                            Repeater {
+                                model: root.healthData.issues !== undefined ? root.healthData.issues : []
+
+                                delegate: RowLayout {
+                                    required property var modelData
+
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        text: modelData.severity === "warn" ? "⚠" : "ℹ"
+                                        color: modelData.severity === "warn" ? "#FFD60A" : AmneziaStyle.color.mutedGray
+                                        font.pixelSize: 12
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.msg
+                                        color: AmneziaStyle.color.paleGray
+                                        font.pixelSize: 12
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+                            }
+                        }
+
+                        Item { Layout.preferredHeight: 4 }
+                    }
                 }
 
                 // ============ About ============
