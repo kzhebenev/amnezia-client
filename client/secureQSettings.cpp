@@ -5,13 +5,38 @@
 #include "core/utils/utilities.h"
 #include <QDataStream>
 #include <QDebug>
+#include <QDir>
 #include <QEventLoop>
 #include <QIODevice>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRandomGenerator>
+#include <QSettings>
 #include <QSharedPointer>
+#include <QStandardPaths>
 #include <QTimer>
+
+namespace
+{
+    // Dev-only escape hatch: when AMNEZIA_DEV_NO_KEYCHAIN is set, the encryption
+    // key/IV live in a plain local file instead of the system keychain, so a
+    // freshly launched dev build never blocks on a keychain password prompt.
+    // Never enabled in release runs (the env var simply isn't set).
+    bool devKeychainBypassEnabled()
+    {
+        return qEnvironmentVariableIsSet("AMNEZIA_DEV_NO_KEYCHAIN");
+    }
+
+    QString devSecretsFilePath()
+    {
+        QString dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+        if (dir.isEmpty()) {
+            dir = QDir::tempPath();
+        }
+        QDir().mkpath(dir);
+        return dir + "/dev-secrets.ini";
+    }
+}
 
 using namespace QKeychain;
 
@@ -274,6 +299,30 @@ QByteArray SecureQSettings::getEncIv() const
 
 QByteArray SecureQSettings::getSecTag(const QString &tag)
 {
+    if (devKeychainBypassEnabled()) {
+        QSettings store(devSecretsFilePath(), QSettings::IniFormat);
+        QByteArray cached = QByteArray::fromBase64(store.value(tag).toByteArray());
+        if (!cached.isEmpty()) {
+            return cached;
+        }
+        // first dev run: migrate the existing key out of the keychain (one prompt)
+        // so already-stored servers stay decryptable, then never touch it again
+        auto migrateJob = QSharedPointer<ReadPasswordJob>(new ReadPasswordJob(keyChainName), &QObject::deleteLater);
+        migrateJob->setAutoDelete(false);
+        migrateJob->setKey(tag);
+        QEventLoop migrateLoop;
+        migrateJob->connect(migrateJob.data(), &ReadPasswordJob::finished, migrateJob.data(),
+                            [&migrateLoop]() { migrateLoop.quit(); });
+        migrateJob->start();
+        migrateLoop.exec();
+        QByteArray fromKeychain = migrateJob->binaryData();
+        if (!fromKeychain.isEmpty()) {
+            store.setValue(tag, fromKeychain.toBase64());
+            store.sync();
+        }
+        return fromKeychain;
+    }
+
     auto job = QSharedPointer<ReadPasswordJob>(new ReadPasswordJob(keyChainName), &QObject::deleteLater);
     job->setAutoDelete(false);
     job->setKey(tag);
@@ -291,6 +340,13 @@ QByteArray SecureQSettings::getSecTag(const QString &tag)
 
 void SecureQSettings::setSecTag(const QString &tag, const QByteArray &data)
 {
+    if (devKeychainBypassEnabled()) {
+        QSettings store(devSecretsFilePath(), QSettings::IniFormat);
+        store.setValue(tag, data.toBase64());
+        store.sync();
+        return;
+    }
+
     auto job = QSharedPointer<WritePasswordJob>(new WritePasswordJob(keyChainName), &QObject::deleteLater);
     job->setAutoDelete(false);
     job->setKey(tag);
