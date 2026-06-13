@@ -1,8 +1,12 @@
 #include "serversUiController.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
+
 #include "core/utils/containerEnum.h"
 #include "core/utils/containers/containerUtils.h"
 #include "core/utils/protocolEnum.h"
+#include "core/utils/constants/configKeys.h"
 #include "core/models/protocolConfig.h"
 #include "core/models/containerConfig.h"
 
@@ -577,6 +581,73 @@ QVariantList ServersUiController::getServerContainers(int serverIndex) const
     }
 
     return containers;
+}
+
+QVariantMap ServersUiController::getContainerDetails(int serverIndex, int containerIndex) const
+{
+    QVariantMap details;
+    const QString serverId = m_serversController->getServerId(serverIndex);
+    if (serverId.isEmpty()) {
+        return details;
+    }
+
+    const auto container = static_cast<DockerContainer>(containerIndex);
+    const QJsonObject containerJson = m_serversController->getContainerConfig(serverId, container).toJson();
+
+    // locate the protocol block holding the client config inside the container
+    QJsonObject protocolJson;
+    for (const QString &key : containerJson.keys()) {
+        const QJsonObject candidate = containerJson.value(key).toObject();
+        if (candidate.contains(configKey::lastConfig) || candidate.contains(configKey::port)) {
+            protocolJson = candidate;
+            break;
+        }
+    }
+
+    const QJsonObject lastConfig =
+            QJsonDocument::fromJson(protocolJson.value(configKey::lastConfig).toString().toUtf8()).object();
+
+    auto pick = [&lastConfig, &protocolJson](const QString &key) -> QString {
+        if (lastConfig.contains(key)) {
+            return lastConfig.value(key).toVariant().toString();
+        }
+        return protocolJson.value(key).toVariant().toString();
+    };
+
+    details["protocolName"] = ContainerUtils::containerHumanNames().value(container);
+    details["hostName"] = pick(configKey::hostName);
+    details["port"] = pick(configKey::port);
+    details["transportProto"] = protocolJson.value(configKey::transportProto).toVariant().toString();
+    details["clientIp"] = pick(configKey::clientIp);
+    details["serverPubKey"] = pick(configKey::serverPubKey);
+    details["mtu"] = pick(configKey::mtu);
+    details["persistentKeepAlive"] = pick(configKey::persistentKeepAlive);
+
+    const QJsonValue allowed = lastConfig.value(configKey::allowedIps);
+    if (allowed.isArray()) {
+        QStringList ips;
+        for (const QJsonValue &v : allowed.toArray()) {
+            ips << v.toString();
+        }
+        details["allowedIps"] = ips.join(", ");
+    } else {
+        details["allowedIps"] = allowed.toString();
+    }
+
+    // AmneziaWG obfuscation summary (read-only — these come from the server)
+    const QStringList awgKeys = { configKey::junkPacketCount,  configKey::junkPacketMinSize,
+                                  configKey::junkPacketMaxSize, configKey::initPacketJunkSize,
+                                  configKey::responsePacketJunkSize };
+    QStringList awgSummary;
+    for (const QString &key : awgKeys) {
+        const QString value = pick(key);
+        if (!value.isEmpty()) {
+            awgSummary << key + "=" + value;
+        }
+    }
+    details["awgSummary"] = awgSummary.join("  ");
+
+    return details;
 }
 
 int ServersUiController::serverIndexForId(const QString &serverId) const

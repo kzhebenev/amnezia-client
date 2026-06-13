@@ -107,6 +107,7 @@ public slots:
 
     QVariantMap getServerInfo(int serverIndex) const;
     QVariantList getServerContainers(int serverIndex) const;
+    QVariantMap getContainerDetails(int serverIndex, int containerIndex) const;
 
 signals:
     void errorOccurred(const QString &errorMessage);

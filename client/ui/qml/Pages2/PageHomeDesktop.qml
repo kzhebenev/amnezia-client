@@ -800,7 +800,7 @@ PageType {
                             spacing: 16
 
                             Text {
-                                text: qsTr("Connection settings…")
+                                text: qsTr("Connection details…")
                                 color: serverSettingsMouseArea.containsMouse ? AmneziaStyle.color.paleGray
                                                                              : AmneziaStyle.color.mutedGray
                                 font.pixelSize: 13
@@ -811,8 +811,17 @@ PageType {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        ServersUiController.processedServerId = root.selectedInfo.serverId
-                                        PageController.goToPage(PageEnum.PageSettingsServerInfo)
+                                        var containerIndex = -1
+                                        for (var i = 0; i < root.selectedContainers.length; ++i) {
+                                            if (root.selectedContainers[i].isDefault) {
+                                                containerIndex = root.selectedContainers[i].containerIndex
+                                            }
+                                        }
+                                        if (containerIndex < 0 && root.selectedContainers.length > 0) {
+                                            containerIndex = root.selectedContainers[0].containerIndex
+                                        }
+                                        connectionDetailsModal.show(root.selectedInfo.name,
+                                                                    ServersUiController.getContainerDetails(root.selectedIndex, containerIndex))
                                     }
                                 }
                             }
@@ -938,6 +947,10 @@ PageType {
 
     DesktopConfirmDialog {
         id: confirmDialog
+    }
+
+    DesktopConnectionDetailsModal {
+        id: connectionDetailsModal
     }
 
     // ===================== Add connection modal =====================
