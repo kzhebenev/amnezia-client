@@ -5609,6 +5609,18 @@ FileZilla или другие SFTP-клиенты, а также смонтир�
         <source>vpn:// key, config text or subscription link</source>
         <translation>vpn://-ключ, текст конфигурации или ссылка подписки</translation>
     </message>
+    <message>
+        <source>offline</source>
+        <translation>офлайн</translation>
+    </message>
+    <message>
+        <source>not used yet</source>
+        <translation>не использовался</translation>
+    </message>
+    <message>
+        <source>Not used yet — connect once to activate</source>
+        <translation>Не использовался — подключитесь, чтобы активировать</translation>
+    </message>
 </context>
 <context>
     <name>DesktopSettingsModal</name>
@@ -6001,6 +6013,61 @@ FileZilla или другие SFTP-клиенты, а также смонтир�
     <message>
         <source>copy</source>
         <translation>копировать</translation>
+    </message>
+</context>
+<context>
+    <name>DiagnosticsController</name>
+    <message>
+        <source>Check finished</source>
+        <translation>Проверка завершена</translation>
+    </message>
+    <message>
+        <source>Checking endpoint %1:%2</source>
+        <translation>Проверка узла %1:%2</translation>
+    </message>
+    <message>
+        <source>DNS resolution failed: %1</source>
+        <translation>Не удалось разрешить DNS: %1</translation>
+    </message>
+    <message>
+        <source>DNS resolved: %1</source>
+        <translation>DNS разрешён: %1</translation>
+    </message>
+    <message>
+        <source>Endpoint is an IP address, no DNS resolution required</source>
+        <translation>Узел задан IP-адресом, разрешение DNS не требуется</translation>
+    </message>
+    <message>
+        <source>External IP matches this server — traffic goes through it</source>
+        <translation>Внешний IP совпадает с сервером — трафик идёт через него</translation>
+    </message>
+    <message>
+        <source>External IP: %1</source>
+        <translation>Внешний IP: %1</translation>
+    </message>
+    <message>
+        <source>Failed to get external IP: %1</source>
+        <translation>Не удалось получить внешний IP: %1</translation>
+    </message>
+    <message>
+        <source>TCP connection failed: %1</source>
+        <translation>Ошибка TCP-подключения: %1</translation>
+    </message>
+    <message>
+        <source>TCP port is reachable, connect took %1 ms</source>
+        <translation>TCP-порт доступен, подключение заняло %1 мс</translation>
+    </message>
+    <message>
+        <source>Transport protocol is UDP — port reachability probe is not applicable</source>
+        <translation>Транспорт UDP — проверка доступности порта неприменима</translation>
+    </message>
+    <message>
+        <source>VPN is active, but traffic exits through a different endpoint (another profile or a via-route)</source>
+        <translation>VPN активен, но трафик выходит через другой узел (другой профиль или via-маршрут)</translation>
+    </message>
+    <message>
+        <source>VPN is not connected — this is your direct provider IP</source>
+        <translation>VPN не подключён — это прямой IP вашего провайдера</translation>
     </message>
 </context>
 </TS>

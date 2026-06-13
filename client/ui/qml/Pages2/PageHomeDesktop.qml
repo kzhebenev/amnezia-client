@@ -17,6 +17,7 @@ PageType {
     // macOS system palette accents (dark appearance)
     readonly property color macGreen: "#32D74B"
     readonly property color macRed: "#FF453A"
+    readonly property color macAmber: "#FFD60A"
     readonly property color sidebarColor: AmneziaStyle.color.onyxBlack
     readonly property color contentColor: AmneziaStyle.color.midnightBlack
     readonly property color cardColor: AmneziaStyle.color.translucentWhite
@@ -36,6 +37,27 @@ PageType {
 
     function currentServerId() {
         return selectedInfo.serverId !== undefined ? selectedInfo.serverId : ""
+    }
+
+    // subscription health → "ok" | "new" (loaded, never connected yet) |
+    // "offline" (was reachable, now timed out) | "unknown" (no status)
+    function statusKind(serverId) {
+        var status = root.subscriptionStatuses[serverId]
+        if (status === undefined) {
+            return "unknown"
+        }
+        if (status.alive) {
+            return "ok"
+        }
+        return status.reason === "no_handshake_yet" ? "new" : "offline"
+    }
+
+    function statusDotColor(serverId) {
+        switch (statusKind(serverId)) {
+        case "offline": return root.macRed
+        case "new":     return root.macAmber
+        default:        return AmneziaStyle.color.charcoalGray
+        }
     }
 
     function appendCheckLog(serverId, line) {
@@ -410,19 +432,13 @@ PageType {
                             anchors.rightMargin: 18
                             spacing: 8
 
-                            // health dot: red = offline, otherwise neutral grey.
-                            // "connected" is shown by the chip on the right, not by colour.
+                            // health dot: red = offline, amber = loaded-but-unused,
+                            // grey = ok/unknown. "connected" is the chip, not a colour.
                             Rectangle {
                                 width: 8
                                 height: 8
                                 radius: 4
-                                color: {
-                                    var status = root.subscriptionStatuses[serverId]
-                                    if (status !== undefined && !status.alive) {
-                                        return root.macRed
-                                    }
-                                    return AmneziaStyle.color.charcoalGray
-                                }
+                                color: root.statusDotColor(serverId)
                             }
 
                             ColumnLayout {
@@ -441,16 +457,22 @@ PageType {
                                 Text {
                                     Layout.fillWidth: true
                                     text: {
-                                        var status = root.subscriptionStatuses[serverId]
-                                        if (status !== undefined && !status.alive) {
-                                            return hostName + " · offline"
+                                        var kind = root.statusKind(serverId)
+                                        if (kind === "offline") {
+                                            return hostName + " · " + qsTr("offline")
+                                        }
+                                        if (kind === "new") {
+                                            return hostName + " · " + qsTr("not used yet")
                                         }
                                         return hostName
                                     }
                                     color: {
-                                        var status = root.subscriptionStatuses[serverId]
-                                        if (status !== undefined && !status.alive) {
+                                        var kind = root.statusKind(serverId)
+                                        if (kind === "offline") {
                                             return Qt.alpha(root.macRed, 0.8)
+                                        }
+                                        if (kind === "new") {
+                                            return Qt.alpha(root.macAmber, 0.9)
                                         }
                                         return AmneziaStyle.color.mutedGray
                                     }
@@ -843,13 +865,19 @@ PageType {
                                                 ? qsTr("Online — handshake %1 s ago").arg(status.handshakeSecondsAgo)
                                                 : qsTr("Online")
                                     }
-                                    return status.reason === "no_handshake_yet" ? qsTr("Offline — no handshake yet")
-                                                                                : qsTr("Offline — handshake timeout")
+                                    return status.reason === "no_handshake_yet"
+                                            ? qsTr("Not used yet — connect once to activate")
+                                            : qsTr("Offline — handshake timeout")
                                 }
                                 color: {
-                                    var status = root.subscriptionStatuses[root.currentServerId()]
-                                    return (status !== undefined && !status.alive) ? root.macRed
-                                                                                   : AmneziaStyle.color.paleGray
+                                    var kind = root.statusKind(root.currentServerId())
+                                    if (kind === "offline") {
+                                        return root.macRed
+                                    }
+                                    if (kind === "new") {
+                                        return root.macAmber
+                                    }
+                                    return AmneziaStyle.color.paleGray
                                 }
                                 font.pixelSize: 13
                             }
