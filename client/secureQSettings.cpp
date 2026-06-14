@@ -3,6 +3,7 @@
 #include "../client/3rd/QSimpleCrypto/src/include/QAead.h"
 #include "../client/3rd/QSimpleCrypto/src/include/QBlockCipher.h"
 #include "core/utils/utilities.h"
+#include "version.h"
 #include <QDataStream>
 #include <QDebug>
 #include <QDir>
@@ -43,7 +44,7 @@ using namespace QKeychain;
 namespace {
     constexpr const char *settingsKeyTag = "settingsKeyTag";
     constexpr const char *settingsIvTag = "settingsIvTag";
-    constexpr const char *keyChainName = "AmneziaVPN-Keychain";
+    constexpr const char *keyChainName = BRAND_KEYCHAIN_NAME;
 }
 
 SecureQSettings::SecureQSettings(const QString &organization, const QString &application, QObject *parent, bool enableEncryption)

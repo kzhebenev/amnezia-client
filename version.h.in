@@ -9,14 +9,26 @@
 #define APP_MAJOR_VERSION "@APP_MAJOR_VERSION@"
 #endif
 
+// Identity constants. With DEVKZ_BRAND (release builds) the fork uses its own
+// names so it gets its own QSettings/keychain storage, daemon socket and
+// LaunchDaemon — fully decoupled from the official AmneziaVPN. Without the flag
+// (dev builds) everything stays identical to upstream, so the dev client keeps
+// sharing the official daemon and existing profiles untouched.
+#ifdef DEVKZ_BRAND
+#define APPLICATION_NAME    "DevkzVPN"
+#define SERVICE_NAME        "DevkzVPN-service"
+#define ORGANIZATION_NAME   "ru.devkz"
+#define BRAND_SOCKET_NAME   "devkzvpn"
+#define BRAND_KEYCHAIN_NAME "DevkzVPN-Keychain"
+#else
 #define APPLICATION_NAME    "AmneziaVPN"
 #define SERVICE_NAME        "AmneziaVPN-service"
 #define ORGANIZATION_NAME   "AmneziaVPN.ORG"
+#define BRAND_SOCKET_NAME   "amneziavpn"
+#define BRAND_KEYCHAIN_NAME "AmneziaVPN-Keychain"
+#endif
 
-// User-facing brand name of the fork. Kept separate from APPLICATION_NAME so
-// the QSettings/keychain storage path (tied to APPLICATION_NAME) stays stable
-// and existing profiles are preserved. A full org/app rename is a later
-// release step that requires data migration.
+// User-facing brand name — always DEVKZ VPN regardless of the storage identity.
 #define DISPLAY_NAME        "DEVKZ VPN"
 
 #endif  // VERSION_H

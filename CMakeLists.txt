@@ -3,6 +3,15 @@ cmake_minimum_required(VERSION 3.25.0 FATAL_ERROR)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# DEVKZ fork: when ON, the build is fully decoupled from the official AmneziaVPN
+# (own daemon socket, service name, QSettings/keychain). OFF keeps dev builds
+# identical to upstream so they keep sharing the official daemon.
+option(DEVKZ_BRAND "Build the standalone DEVKZ VPN fork (decoupled daemon/storage)" OFF)
+if(DEVKZ_BRAND)
+    add_compile_definitions(DEVKZ_BRAND)
+    message(STATUS "DEVKZ_BRAND enabled — standalone fork identity")
+endif()
+
 set(PROJECT AmneziaVPN)
 set(AMNEZIAVPN_VERSION 4.9.0.2)
 
