@@ -1320,6 +1320,7 @@ Popup {
                                 text: "DEVKZ VPN"
                                 color: AmneziaStyle.color.paleGray
                                 font.pixelSize: 17
+                                font.letterSpacing: -0.4
                                 font.weight: 700
                             }
 

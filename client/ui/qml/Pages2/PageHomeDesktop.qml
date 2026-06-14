@@ -652,6 +652,7 @@ PageType {
                                 text: root.selectedInfo.name !== undefined ? root.selectedInfo.name : ""
                                 color: AmneziaStyle.color.paleGray
                                 font.pixelSize: 22
+                                font.letterSpacing: -0.6
                                 font.weight: 700
                                 elide: Text.ElideRight
                             }

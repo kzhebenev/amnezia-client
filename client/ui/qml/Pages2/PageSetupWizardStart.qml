@@ -68,6 +68,7 @@ PageType {
                 text: qsTr("DEVKZ VPN")
                 color: AmneziaStyle.color.paleGray
                 font.pixelSize: 28
+                font.letterSpacing: -0.8
                 font.weight: 700
             }
 
